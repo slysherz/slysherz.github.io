@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Polar Training Session Tool</title>
+  <meta name="description" content="Simple tool to create training plans for your Polar Watch.">
+  <meta name="author" content="slysherz">
+</head>
+
+<body>
+    <div class='content'>
+        <h2>Create a new training session</h2>
+        <p>Simple tool to create training plans for your Polar Watch.</p>
+        <p>Training session name: </p>
+        <input type='text' id='train-name' spellcheck='false' value='John'>
+        <br>
+
+        <p>Training session description: </p>
+        <textarea rows='21' cols='1' readonly id='line-numbers'>
+01
+02
+03
+04
+05
+06
+07
+08
+09
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</textarea>
+        <textarea rows='21' cols='50' id='input-box' spellcheck='false'>10' warmup R1
+4x( 4' R3
+    2' rec R0)
+3x( 6' R2
+    2' rec R0)
+4x( 4' R3
+    / 2' rec R0)
+10' R1</textarea>
+
+        <br>
+        <br>
+        <button type='button' id='download-button'>Download</button>
+        <p id='output'>Loading...</p>
+
+        <h2>How to use</h2>
+        <div id='usage-examples'></div>
+    </div>
+
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        .content {
+            width: 500px;
+            margin: auto;
+        }
+
+        input {
+            width: 15em;
+            font-family: monospace;
+        }
+
+        textarea {
+            resize: none;
+            font-family: monospace;
+            tab-size: 4;
+            -moz-tab-size: 4;
+        }
+
+        #line-numbers {
+            text-align: center;
+        }
+
+        #output {
+            white-space: pre;
+            font-family: monospace;
+        }
+    </style>
+
+    <script src="polar-training-session-tool/bundle.js"></script>
+</body>
+
+</html>
