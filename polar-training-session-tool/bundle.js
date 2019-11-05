@@ -8,7 +8,7 @@ const {
     encodeSession,
     parse,
     SyntaxError
-} = require('./polar-training-modules/polar-training')
+} = require('./polar-training')
 
 // Change tab key to work like in a text editor
 textareaID.onkeydown = function (e) {
@@ -32,8 +32,6 @@ function updateMessage() {
 
         try {
             result = describeSession(train.exerciseTarget[0].phases.phase, trainNameID.value)
-                .replace(/\n/g, '<br>')
-                .replace(/\t/g, '    ')
         } catch (_) {
             result = 'Failed to generate session description. It should still work, though.'
         }
@@ -49,7 +47,7 @@ function updateMessage() {
         download.disabled = true
     }
 
-    outputID.innerHTML = '' + result
+    outputID.textContent = '' + result
 }
 
 // Function to download data to a file
@@ -188,7 +186,7 @@ for (const example of usageExamples) {
 usageExamplesID.innerHTML = output
 
 /** END **/
-},{"./polar-training-modules/polar-training":20}],2:[function(require,module,exports){
+},{"./polar-training":23}],2:[function(require,module,exports){
 "use strict";
 module.exports = asPromise;
 
@@ -2838,294 +2836,6 @@ BufferWriter.prototype.string = function write_string_buffer(value) {
  */
 
 },{"./util/minimal":17,"./writer":18}],20:[function(require,module,exports){
-const polarData = require('./proto-data').polar_data
-const polarTypes = require('./proto-types').polar_types
-const {
-    parse,
-    SyntaxError
-} = require('./train-description-parser')
-
-const INTENSITY_TYPE_FREE = polarData.PbPhaseIntensity.create({
-    intensity_type: polarData.PbPhaseIntensity.PhaseIntensityType.PHASE_INTENSITY_FREE
-})
-
-const ZERO_DURATION = polarTypes.PbDuration.create()
-const KAYAK = polarTypes.PbSportIdentifier.create({
-    value: 95
-})
-
-function flatten(array) {
-    let result = []
-
-    for (let entry of array) {
-        if (entry instanceof Array) {
-            result = [...result, ...entry]
-        } else {
-            result = [...result, entry]
-        }
-    }
-
-    return result
-}
-
-function newPhase(name, duration) {
-    return polarData.PbPhase.create({
-        name: polarTypes.PbOneLineText.create({ text: name.trim() }),
-        change: 1,
-        goal: polarData.PbPhaseGoal.create({
-            goalType: 1,
-            duration: duration
-        }),
-        intensity: INTENSITY_TYPE_FREE
-    })
-}
-
-function newDuration({ minutes, seconds }) {
-    const secs = 60 * minutes + seconds
-
-    return polarTypes.PbDuration.create({
-        hours: Math.floor(secs / 3600),
-        minutes: Math.floor((secs % 3600) / 60),
-        seconds: secs % 60,
-        millis: 0
-    })
-}
-
-function preparePhases(item) {
-    // List of items
-    if (item instanceof Array) {
-        return flatten(item.map(preparePhases))
-    }
-
-    if (item.hasOwnProperty('name')) {
-        return item
-    }
-
-    // Repeat block
-    let innerPhases = preparePhases(item.phases)
-
-    if (item.repetitions === 1) {
-        // Blocks with a single repetition do not need to repeat
-        return innerPhases
-    }
-
-    if (item.repetitions <= 0) {
-        // We can discard blocks with 0 repetitions
-        return []
-    }
-
-    if (item.recovery_phase) {
-        return flatten([
-            ...preparePhases({
-                repetitions: item.repetitions - 1,
-                phases: [...item.phases, item.recovery_phase],
-                recovery_phase: null
-            }),
-            ...preparePhases(item.phases),
-        ])
-    }
-
-    let last = innerPhases[innerPhases.length - 1]
-
-    if (last.hasOwnProperty('repetitions')) {
-        // Add filler phase at the end to store repetitions
-        return [...innerPhases, {
-            name: 'filler',
-            duration: {
-                minutes: 0,
-                seconds: 0
-            },
-            repetitions: item.repetitions,
-            blockSize: innerPhases.length + 1
-        }]
-    }
-
-    innerPhases[innerPhases.length - 1] = {
-        name: last.name,
-        duration: last.duration,
-        repetitions: item.repetitions,
-        blockSize: innerPhases.length
-    }
-
-    return innerPhases
-}
-
-function buildPhases(phases) {
-    return phases.map((phase, i) => {
-        const polarPhase = newPhase(phase.name, newDuration(phase.duration))
-
-        if (phase.hasOwnProperty('repetitions')) {
-            polarPhase.jumpIndex = i - phase.blockSize + 2
-            polarPhase.repeatCount = phase.repetitions - 1
-        }
-
-        console.assert(polarData.PbPhase.verify(polarPhase) === null)
-        return polarPhase
-    })
-}
-
-function buildSession(tree, sessionName) {
-    const phases = buildPhases(preparePhases(tree))
-
-    const target = polarData.PbExerciseTarget.create({
-        targetType: 2,
-        phases: polarData.PbPhases.create({
-            phase: phases
-        }),
-        sportId: KAYAK
-    })
-
-    const session = polarData.PbTrainingSessionTarget.create({
-        name: polarTypes.PbOneLineText.create({
-            text: sessionName
-        }),
-        exerciseTarget: [target]
-    })
-
-    console.assert(polarData.PbTrainingSessionTarget.verify(session) === null)
-    return session
-}
-
-function addDuration(a, b) {
-    return newDuration({
-        minutes: a.minutes + b.minutes + 60 * (a.hours + b.hours),
-        seconds: a.seconds + b.seconds
-    })
-}
-
-function multiplyDuration(d, by) {
-    return newDuration({
-        minutes: by * (d.minutes + 60 * d.hours),
-        seconds: by * (d.seconds)
-    })
-}
-
-function describeSession(phases, trainName) {
-    function getInnerDuration(phase) {
-        if (phase.repetitions) {
-            // It's a block
-            let result = newDuration({ minutes: 0, seconds: 0 })
-
-            for (const p of phase.phases) {
-                result = addDuration(result, getDuration(p))
-            }
-
-            return result
-        }
-
-        // It's a phase
-        return getDuration(phase)
-    }
-
-    function getDuration(phase) {
-        if (phase.repetitions) {
-            // It's a block
-            let result = newDuration({ minutes: 0, seconds: 0 })
-
-            for (const p of phase.phases) {
-                result = addDuration(result, getDuration(p))
-            }
-
-            return multiplyDuration(result, phase.repetitions)
-        }
-
-        // It's a phase
-        return phase.duration
-    }
-
-    function drawDuration(duration) {
-        const {
-            hours: h,
-            minutes: m,
-            seconds: s
-        } = duration
-
-        let result = ''
-
-        if (h > 0) {
-            result += h + 'h'
-        }
-
-        if (m > 0) {
-            result += m + '\''
-        }
-
-        if (s > 0 || (h === 0 && m === 0)) {
-            result += s + '\'\''
-        }
-
-        return result
-    }
-
-    function describePhase(phase) {
-        if (phase.repetitions) {
-            // It's a block
-            let result = ''
-
-            for (let p of (phase.phases)) {
-                result += '\n' + describePhase(p)
-            }
-
-            const duration = drawDuration(getInnerDuration(phase))
-            return `Repeat x${phase.repetitions} [${duration}]` + result.replace(/\n/g, '\n\t')
-        }
-
-        // It's a phase
-        const duration = drawDuration(getDuration(phase))
-        return `${duration} ${phase.name}`
-    }
-
-    const p = phases.map((phase, i) => ({
-        id: i + 1,
-        duration: phase.goal.duration,
-        name: phase.name.text,
-        jumpIndex: phase.jumpIndex || null,
-        repeatCount: phase.repeatCount || null
-    }))
-
-    let result = []
-    for (const phase of p) {
-        result.push(phase)
-
-        if (phase.repeatCount !== null) {
-            // Pack phases into a block
-            const sliceI = result.findIndex(p => p.id === phase.jumpIndex)
-            console.assert(sliceI !== -1)
-
-            let blockPhases = result.slice(sliceI)
-
-            result = [
-                ...result.slice(0, sliceI),
-                {
-                    id: blockPhases[0].id,
-                    phases: blockPhases,
-                    repetitions: phase.repeatCount + 1
-                }
-            ]
-        }
-    }
-
-    return trainName + describePhase({
-        id: 0,
-        phases: result,
-        repetitions: 1
-    }).slice(9)
-}
-
-function encodeSession(session) {
-    return polarData.PbTrainingSessionTarget
-        .encode(session)
-        .finish()
-}
-
-module.exports = {
-    buildSession,
-    describeSession,
-    encodeSession,
-    parse,
-    SyntaxError
-}
-},{"./proto-data":21,"./proto-types":22,"./train-description-parser":23}],21:[function(require,module,exports){
 /*eslint-disable block-scoped-var, id-length, no-control-regex, no-magic-numbers, no-prototype-builtins, no-redeclare, no-shadow, no-var, sort-vars*/
 (function(global, factory) { /* global define, require, module */
 
@@ -16444,7 +16154,7 @@ module.exports = {
     return $root;
 });
 
-},{"protobufjs/minimal":9}],22:[function(require,module,exports){
+},{"protobufjs/minimal":9}],21:[function(require,module,exports){
 /*eslint-disable block-scoped-var, id-length, no-control-regex, no-magic-numbers, no-prototype-builtins, no-redeclare, no-shadow, no-var, sort-vars*/
 (function(global, factory) { /* global define, require, module */
 
@@ -18224,7 +17934,7 @@ module.exports = {
     return $root;
 });
 
-},{"protobufjs/minimal":9}],23:[function(require,module,exports){
+},{"protobufjs/minimal":9}],22:[function(require,module,exports){
 /*
  * Generated by PEG.js 0.10.0.
  *
@@ -18408,27 +18118,32 @@ function peg$parse(input, options) {
       peg$c28 = peg$otherExpectation("phase name"),
       peg$c29 = function() { return text() },
       peg$c30 = peg$otherExpectation("phase duration"),
-      peg$c31 = function(minutes, seconds) { return { minutes, seconds } },
-      peg$c32 = function(seconds) { return { seconds, minutes: 0 } },
-      peg$c33 = function(minutes) { return { seconds: 0, minutes } },
-      peg$c34 = peg$otherExpectation("apostrophe"),
-      peg$c35 = /^[\xB4\u2019`'\u2018]/,
-      peg$c36 = peg$classExpectation(["\xB4", "\u2019", "`", "'", "\u2018"], false, false),
-      peg$c37 = peg$otherExpectation("double apostrophe"),
-      peg$c38 = /^[\u201D"]/,
-      peg$c39 = peg$classExpectation(["\u201D", "\""], false, false),
-      peg$c40 = peg$otherExpectation("integer"),
-      peg$c41 = /^[0-9]/,
-      peg$c42 = peg$classExpectation([["0", "9"]], false, false),
-      peg$c43 = function() { return parseInt(text(), 10); },
-      peg$c44 = peg$otherExpectation("space"),
-      peg$c45 = /^[ \t\r]/,
-      peg$c46 = peg$classExpectation([" ", "\t", "\r"], false, false),
-      peg$c47 = peg$otherExpectation("whitespace"),
-      peg$c48 = /^[ \t\n\r]/,
-      peg$c49 = peg$classExpectation([" ", "\t", "\n", "\r"], false, false),
-      peg$c50 = /^[^\n+()\/]/,
-      peg$c51 = peg$classExpectation(["\n", "+", "(", ")", "/"], true, false),
+      peg$c31 = function(dur) { return { hours: 0, ...dur } },
+      peg$c32 = /^[hH]/,
+      peg$c33 = peg$classExpectation(["h", "H"], false, false),
+      peg$c34 = function(hours, dur) { return { hours, ...dur } },
+      peg$c35 = function(hours) { return { hours, minutes: 0, seconds: 0 } },
+      peg$c36 = function(minutes, seconds) { return { minutes, seconds } },
+      peg$c37 = function(seconds) { return { seconds, minutes: 0 } },
+      peg$c38 = function(minutes) { return { seconds: 0, minutes } },
+      peg$c39 = peg$otherExpectation("apostrophe"),
+      peg$c40 = /^[\xB4\u2019`'\u2018]/,
+      peg$c41 = peg$classExpectation(["\xB4", "\u2019", "`", "'", "\u2018"], false, false),
+      peg$c42 = peg$otherExpectation("double apostrophe"),
+      peg$c43 = /^[\u201D"]/,
+      peg$c44 = peg$classExpectation(["\u201D", "\""], false, false),
+      peg$c45 = peg$otherExpectation("integer"),
+      peg$c46 = /^[0-9]/,
+      peg$c47 = peg$classExpectation([["0", "9"]], false, false),
+      peg$c48 = function() { return parseInt(text(), 10); },
+      peg$c49 = peg$otherExpectation("space"),
+      peg$c50 = /^[ \t\r]/,
+      peg$c51 = peg$classExpectation([" ", "\t", "\r"], false, false),
+      peg$c52 = peg$otherExpectation("whitespace"),
+      peg$c53 = /^[ \t\n\r]/,
+      peg$c54 = peg$classExpectation([" ", "\t", "\n", "\r"], false, false),
+      peg$c55 = /^[^\n+()\/]/,
+      peg$c56 = peg$classExpectation(["\n", "+", "(", ")", "/"], true, false),
 
       peg$currPos          = 0,
       peg$savedPos         = 0,
@@ -19155,6 +18870,98 @@ function peg$parse(input, options) {
   }
 
   function peg$parseduration() {
+    var s0, s1, s2, s3, s4, s5;
+
+    peg$silentFails++;
+    s0 = peg$currPos;
+    s1 = peg$parseduration_no_hours();
+    if (s1 !== peg$FAILED) {
+      peg$savedPos = s0;
+      s1 = peg$c31(s1);
+    }
+    s0 = s1;
+    if (s0 === peg$FAILED) {
+      s0 = peg$currPos;
+      s1 = peg$parseinteger();
+      if (s1 !== peg$FAILED) {
+        s2 = peg$parse_();
+        if (s2 !== peg$FAILED) {
+          if (peg$c32.test(input.charAt(peg$currPos))) {
+            s3 = input.charAt(peg$currPos);
+            peg$currPos++;
+          } else {
+            s3 = peg$FAILED;
+            if (peg$silentFails === 0) { peg$fail(peg$c33); }
+          }
+          if (s3 !== peg$FAILED) {
+            s4 = peg$parse_();
+            if (s4 !== peg$FAILED) {
+              s5 = peg$parseduration_no_hours();
+              if (s5 !== peg$FAILED) {
+                peg$savedPos = s0;
+                s1 = peg$c34(s1, s5);
+                s0 = s1;
+              } else {
+                peg$currPos = s0;
+                s0 = peg$FAILED;
+              }
+            } else {
+              peg$currPos = s0;
+              s0 = peg$FAILED;
+            }
+          } else {
+            peg$currPos = s0;
+            s0 = peg$FAILED;
+          }
+        } else {
+          peg$currPos = s0;
+          s0 = peg$FAILED;
+        }
+      } else {
+        peg$currPos = s0;
+        s0 = peg$FAILED;
+      }
+      if (s0 === peg$FAILED) {
+        s0 = peg$currPos;
+        s1 = peg$parseinteger();
+        if (s1 !== peg$FAILED) {
+          s2 = peg$parse_();
+          if (s2 !== peg$FAILED) {
+            if (peg$c32.test(input.charAt(peg$currPos))) {
+              s3 = input.charAt(peg$currPos);
+              peg$currPos++;
+            } else {
+              s3 = peg$FAILED;
+              if (peg$silentFails === 0) { peg$fail(peg$c33); }
+            }
+            if (s3 !== peg$FAILED) {
+              peg$savedPos = s0;
+              s1 = peg$c35(s1);
+              s0 = s1;
+            } else {
+              peg$currPos = s0;
+              s0 = peg$FAILED;
+            }
+          } else {
+            peg$currPos = s0;
+            s0 = peg$FAILED;
+          }
+        } else {
+          peg$currPos = s0;
+          s0 = peg$FAILED;
+        }
+      }
+    }
+    peg$silentFails--;
+    if (s0 === peg$FAILED) {
+      s1 = peg$FAILED;
+      if (peg$silentFails === 0) { peg$fail(peg$c30); }
+    }
+
+    return s0;
+  }
+
+  function peg$parseduration_no_hours() {
     var s0, s1, s2, s3, s4, s5, s6, s7;
 
     peg$silentFails++;
@@ -19174,7 +18981,7 @@ function peg$parse(input, options) {
                 s7 = peg$parsedapos();
                 if (s7 !== peg$FAILED) {
                   peg$savedPos = s0;
-                  s1 = peg$c31(s1, s5);
+                  s1 = peg$c36(s1, s5);
                   s0 = s1;
                 } else {
                   peg$currPos = s0;
@@ -19213,7 +19020,7 @@ function peg$parse(input, options) {
           s3 = peg$parsedapos();
           if (s3 !== peg$FAILED) {
             peg$savedPos = s0;
-            s1 = peg$c32(s1);
+            s1 = peg$c37(s1);
             s0 = s1;
           } else {
             peg$currPos = s0;
@@ -19236,7 +19043,7 @@ function peg$parse(input, options) {
             s3 = peg$parseapos();
             if (s3 !== peg$FAILED) {
               peg$savedPos = s0;
-              s1 = peg$c33(s1);
+              s1 = peg$c38(s1);
               s0 = s1;
             } else {
               peg$currPos = s0;
@@ -19265,17 +19072,17 @@ function peg$parse(input, options) {
     var s0, s1;
 
     peg$silentFails++;
-    if (peg$c35.test(input.charAt(peg$currPos))) {
+    if (peg$c40.test(input.charAt(peg$currPos))) {
       s0 = input.charAt(peg$currPos);
       peg$currPos++;
     } else {
       s0 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c36); }
+      if (peg$silentFails === 0) { peg$fail(peg$c41); }
     }
     peg$silentFails--;
     if (s0 === peg$FAILED) {
       s1 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c34); }
+      if (peg$silentFails === 0) { peg$fail(peg$c39); }
     }
 
     return s0;
@@ -19301,18 +19108,18 @@ function peg$parse(input, options) {
       s0 = peg$FAILED;
     }
     if (s0 === peg$FAILED) {
-      if (peg$c38.test(input.charAt(peg$currPos))) {
+      if (peg$c43.test(input.charAt(peg$currPos))) {
         s0 = input.charAt(peg$currPos);
         peg$currPos++;
       } else {
         s0 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c39); }
+        if (peg$silentFails === 0) { peg$fail(peg$c44); }
       }
     }
     peg$silentFails--;
     if (s0 === peg$FAILED) {
       s1 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c37); }
+      if (peg$silentFails === 0) { peg$fail(peg$c42); }
     }
 
     return s0;
@@ -19326,22 +19133,22 @@ function peg$parse(input, options) {
     s1 = peg$parse_();
     if (s1 !== peg$FAILED) {
       s2 = [];
-      if (peg$c41.test(input.charAt(peg$currPos))) {
+      if (peg$c46.test(input.charAt(peg$currPos))) {
         s3 = input.charAt(peg$currPos);
         peg$currPos++;
       } else {
         s3 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c42); }
+        if (peg$silentFails === 0) { peg$fail(peg$c47); }
       }
       if (s3 !== peg$FAILED) {
         while (s3 !== peg$FAILED) {
           s2.push(s3);
-          if (peg$c41.test(input.charAt(peg$currPos))) {
+          if (peg$c46.test(input.charAt(peg$currPos))) {
             s3 = input.charAt(peg$currPos);
             peg$currPos++;
           } else {
             s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c42); }
+            if (peg$silentFails === 0) { peg$fail(peg$c47); }
           }
         }
       } else {
@@ -19349,7 +19156,7 @@ function peg$parse(input, options) {
       }
       if (s2 !== peg$FAILED) {
         peg$savedPos = s0;
-        s1 = peg$c43();
+        s1 = peg$c48();
         s0 = s1;
       } else {
         peg$currPos = s0;
@@ -19362,7 +19169,7 @@ function peg$parse(input, options) {
     peg$silentFails--;
     if (s0 === peg$FAILED) {
       s1 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c40); }
+      if (peg$silentFails === 0) { peg$fail(peg$c45); }
     }
 
     return s0;
@@ -19373,27 +19180,27 @@ function peg$parse(input, options) {
 
     peg$silentFails++;
     s0 = [];
-    if (peg$c45.test(input.charAt(peg$currPos))) {
+    if (peg$c50.test(input.charAt(peg$currPos))) {
       s1 = input.charAt(peg$currPos);
       peg$currPos++;
     } else {
       s1 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c46); }
+      if (peg$silentFails === 0) { peg$fail(peg$c51); }
     }
     while (s1 !== peg$FAILED) {
       s0.push(s1);
-      if (peg$c45.test(input.charAt(peg$currPos))) {
+      if (peg$c50.test(input.charAt(peg$currPos))) {
         s1 = input.charAt(peg$currPos);
         peg$currPos++;
       } else {
         s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c46); }
+        if (peg$silentFails === 0) { peg$fail(peg$c51); }
       }
     }
     peg$silentFails--;
     if (s0 === peg$FAILED) {
       s1 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c44); }
+      if (peg$silentFails === 0) { peg$fail(peg$c49); }
     }
 
     return s0;
@@ -19403,17 +19210,17 @@ function peg$parse(input, options) {
     var s0, s1;
 
     peg$silentFails++;
-    if (peg$c48.test(input.charAt(peg$currPos))) {
+    if (peg$c53.test(input.charAt(peg$currPos))) {
       s0 = input.charAt(peg$currPos);
       peg$currPos++;
     } else {
       s0 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c49); }
+      if (peg$silentFails === 0) { peg$fail(peg$c54); }
     }
     peg$silentFails--;
     if (s0 === peg$FAILED) {
       s1 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c47); }
+      if (peg$silentFails === 0) { peg$fail(peg$c52); }
     }
 
     return s0;
@@ -19422,12 +19229,12 @@ function peg$parse(input, options) {
   function peg$parseletter() {
     var s0;
 
-    if (peg$c50.test(input.charAt(peg$currPos))) {
+    if (peg$c55.test(input.charAt(peg$currPos))) {
       s0 = input.charAt(peg$currPos);
       peg$currPos++;
     } else {
       s0 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c51); }
+      if (peg$silentFails === 0) { peg$fail(peg$c56); }
     }
 
     return s0;
@@ -19457,4 +19264,309 @@ module.exports = {
   parse:       peg$parse
 };
 
-},{}]},{},[1]);
+},{}],23:[function(require,module,exports){
+const polarData = require('./output/proto-data').polar_data
+const polarTypes = require('./output/proto-types').polar_types
+const {
+    parse,
+    SyntaxError
+} = require('./output/train-description-parser')
+
+const INTENSITY_TYPE_FREE = polarData.PbPhaseIntensity.create({
+    intensity_type: polarData.PbPhaseIntensity.PhaseIntensityType.PHASE_INTENSITY_FREE
+})
+
+const ZERO_DURATION = polarTypes.PbDuration.create()
+const KAYAK = polarTypes.PbSportIdentifier.create({
+    value: 95
+})
+
+function flatten(array) {
+    let result = []
+
+    for (let entry of array) {
+        if (entry instanceof Array) {
+            result = [...result, ...entry]
+        } else {
+            result = [...result, entry]
+        }
+    }
+
+    return result
+}
+
+function newPhase(name, duration) {
+    return polarData.PbPhase.create({
+        name: polarTypes.PbOneLineText.create({ text: name.trim() }),
+        change: 1,
+        goal: polarData.PbPhaseGoal.create({
+            goalType: 1,
+            duration: duration
+        }),
+        intensity: INTENSITY_TYPE_FREE
+    })
+}
+
+function newDuration({ hours, minutes, seconds }) {
+    const secs = 3600 * hours + 60 * minutes + seconds
+
+    return polarTypes.PbDuration.create({
+        hours: Math.floor(secs / 3600),
+        minutes: Math.floor((secs % 3600) / 60),
+        seconds: secs % 60,
+        millis: 0
+    })
+}
+
+function emptyDuration() {
+    return newDuration({
+        hours: 0,
+        minutes: 0,
+        seconds: 0
+    })
+}
+
+function preparePhases(item) {
+    // List of items
+    if (item instanceof Array) {
+        return flatten(item.map(preparePhases))
+    }
+
+    if (item.hasOwnProperty('name')) {
+        return item
+    }
+
+    // Repeat block
+    let innerPhases = preparePhases(item.phases)
+
+    if (item.repetitions === 1) {
+        // Blocks with a single repetition do not need to repeat
+        return innerPhases
+    }
+
+    if (item.repetitions <= 0) {
+        // We can discard blocks with 0 repetitions
+        return []
+    }
+
+    if (item.recovery_phase) {
+        return flatten([
+            ...preparePhases({
+                repetitions: item.repetitions - 1,
+                phases: [...item.phases, item.recovery_phase],
+                recovery_phase: null
+            }),
+            ...preparePhases(item.phases),
+        ])
+    }
+
+    let last = innerPhases[innerPhases.length - 1]
+
+    if (last.hasOwnProperty('repetitions')) {
+        // Add filler phase at the end to store repetitions
+        return [...innerPhases, {
+            name: 'filler',
+            duration: {
+                minutes: 0,
+                seconds: 0
+            },
+            repetitions: item.repetitions,
+            blockSize: innerPhases.length + 1
+        }]
+    }
+
+    innerPhases[innerPhases.length - 1] = {
+        name: last.name,
+        duration: last.duration,
+        repetitions: item.repetitions,
+        blockSize: innerPhases.length
+    }
+
+    return innerPhases
+}
+
+function buildPhases(phases) {
+    return phases.map((phase, i) => {
+        const polarPhase = newPhase(phase.name, newDuration(phase.duration))
+
+        if (phase.hasOwnProperty('repetitions')) {
+            polarPhase.jumpIndex = i - phase.blockSize + 2
+            polarPhase.repeatCount = phase.repetitions - 1
+        }
+
+        console.assert(polarData.PbPhase.verify(polarPhase) === null)
+        return polarPhase
+    })
+}
+
+function buildSession(tree, sessionName) {
+    const phases = buildPhases(preparePhases(tree))
+
+    const target = polarData.PbExerciseTarget.create({
+        targetType: 2,
+        phases: polarData.PbPhases.create({
+            phase: phases
+        }),
+        sportId: KAYAK
+    })
+
+    const session = polarData.PbTrainingSessionTarget.create({
+        name: polarTypes.PbOneLineText.create({
+            text: sessionName
+        }),
+        exerciseTarget: [target]
+    })
+
+    console.assert(polarData.PbTrainingSessionTarget.verify(session) === null)
+    return session
+}
+
+function addDuration(a, b) {
+    return newDuration({
+        hours: a.hours + b.hours,
+        minutes: a.minutes + b.minutes,
+        seconds: a.seconds + b.seconds
+    })
+}
+
+function multiplyDuration(d, by) {
+    return newDuration({
+        hours: d.hours,
+        minutes: by * d.minutes,
+        seconds: by * d.seconds
+    })
+}
+
+function describeSession(phases, trainName) {
+    function getInnerDuration(phase) {
+        if (phase.repetitions) {
+            // It's a block
+            let result = emptyDuration()
+
+            for (const p of phase.phases) {
+                result = addDuration(result, getDuration(p))
+            }
+
+            return result
+        }
+
+        // It's a phase
+        return getDuration(phase)
+    }
+
+    function getDuration(phase) {
+        if (phase.repetitions) {
+            // It's a block
+            let result = emptyDuration()
+
+            for (const p of phase.phases) {
+                result = addDuration(result, getDuration(p))
+            }
+
+            return multiplyDuration(result, phase.repetitions)
+        }
+
+        // It's a phase
+        return phase.duration
+    }
+
+    function drawDuration(duration) {
+        const {
+            hours: h,
+            minutes: m,
+            seconds: s
+        } = duration
+
+        let result = ''
+
+        if (h > 0) {
+            result += h + 'h'
+        }
+
+        if (m > 0) {
+            result += m + '\''
+        }
+
+        if (s > 0 || (h === 0 && m === 0)) {
+            result += s + '\'\''
+        }
+
+        return result
+    }
+
+    function describePhase(phase) {
+        if (phase.repetitions) {
+            // It's a block
+            let result = ''
+
+            for (let p of (phase.phases)) {
+                result += '\n' + describePhase(p)
+            }
+
+            const duration = drawDuration(getInnerDuration(phase))
+            return `Repeat x${phase.repetitions} [${duration}]` + result.replace(/\n/g, '\n\t')
+        }
+
+        // It's a phase
+        const duration = drawDuration(getDuration(phase))
+        return `${duration} ${phase.name}`
+    }
+
+    const p = phases.map((phase, i) => ({
+        id: i + 1,
+        duration: phase.goal.duration,
+        name: phase.name.text,
+        jumpIndex: phase.jumpIndex || null,
+        repeatCount: phase.repeatCount || null
+    }))
+
+    let result = []
+    for (const phase of p) {
+        result.push(phase)
+
+        if (phase.repeatCount !== null) {
+            // Pack phases into a block
+            const sliceI = result.findIndex(p => p.id === phase.jumpIndex)
+            console.assert(sliceI !== -1)
+
+            let blockPhases = result.slice(sliceI)
+
+            result = [
+                ...result.slice(0, sliceI),
+                {
+                    id: blockPhases[0].id,
+                    phases: blockPhases,
+                    repetitions: phase.repeatCount + 1
+                }
+            ]
+        }
+    }
+
+    const description = trainName + describePhase({
+        id: 0,
+        phases: result,
+        repetitions: 1
+    }).slice(9)
+
+    if (phases.length > 20) {
+        return 'WARNING: your training session has too many different phases and probably won\'t work\n'
+            + description
+    }
+
+    return description
+}
+
+function encodeSession(session) {
+    return polarData.PbTrainingSessionTarget
+        .encode(session)
+        .finish()
+}
+
+module.exports = {
+    buildSession,
+    describeSession,
+    encodeSession,
+    parse,
+    SyntaxError
+}
+},{"./output/proto-data":20,"./output/proto-types":21,"./output/train-description-parser":22}]},{},[1]);
