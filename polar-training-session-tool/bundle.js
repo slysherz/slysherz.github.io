@@ -1,7 +1,4 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-const trainNameID = document.getElementById('train-name')
-const textareaID = document.getElementById('input-box')
-const outputID = document.getElementById('output')
 const {
     buildSession,
     describeSession,
@@ -10,45 +7,18 @@ const {
     SyntaxError
 } = require('./polar-training')
 
-// Change tab key to work like in a text editor
-textareaID.onkeydown = function (e) {
-    if (e.keyCode === 9 || e.which === 9) {
-        e.preventDefault();
-        var s = this.selectionStart;
-        this.value = this.value.substring(0, this.selectionStart) + "\t" + this.value.substring(this.selectionEnd);
-        this.selectionEnd = s + 1;
-    }
+const trainNameID = document.getElementById('train-name')
+const textareaID = document.getElementById('input-box')
+const outputID = document.getElementById('output')
+const downloadButtonID = document.getElementById('download-button')
+
+function countLines(str) {
+    return str.split(/\r\n|\r|\n/).length
 }
 
-trainNameID.defaultValue = new Date().toISOString().slice(0, 10)
-
-function updateMessage() {
-    let result = 'something went wrong'
-
-    try {
-        const input = textareaID.value
-        const parsed = parse(input)
-        const train = buildSession(parsed, trainNameID.value)
-
-        try {
-            result = describeSession(train.exerciseTarget[0].phases.phase, trainNameID.value)
-        } catch (_) {
-            result = 'Failed to generate session description. It should still work, though.'
-        }
-
-        download.disabled = false
-
-    } catch (error) {
-        if (error instanceof SyntaxError) {
-            result = `Error at line ${error.location.start.line}, column ${error.location.start.column}:<br>${error.message}`
-        }
-
-        console.log(error)
-        download.disabled = true
-    }
-
-    outputID.textContent = '' + result
-}
+/******************************
+ * RESPOND TO DOWNLOAD BUTTON *
+ ******************************/
 
 // Function to download data to a file
 function download(data, filename, type) {
@@ -78,17 +48,67 @@ function saveTrain() {
     download(data, `${sessionName}.BPB`, 'binary')
 }
 
-textareaID.addEventListener('input', updateMessage)
-trainNameID.addEventListener('input', updateMessage)
-updateMessage()
-
-const downloadButtonID = document.getElementById('download-button')
 downloadButtonID.onclick = saveTrain
 
-function countLines(str) {
-    return str.split(/\r\n|\r|\n/).length
+
+/***********************************
+ * RESPOND TO NEW DESCRIPTION TEXT *
+ ***********************************/
+
+function updateMessage() {
+    let result = 'something went wrong'
+
+    try {
+        const input = textareaID.value
+        const parsed = parse(input)
+        const train = buildSession(parsed, trainNameID.value)
+
+        try {
+            result = describeSession(train.exerciseTarget[0].phases.phase, trainNameID.value)
+        } catch (_) {
+            result = 'Failed to generate session description. It should still work, though.'
+        }
+
+        downloadButtonID.disabled = false
+
+    } catch (error) {
+        if (error instanceof SyntaxError) {
+            result = `Error at line ${error.location.start.line}, column ${error.location.start.column}:\n${error.message}`
+        }
+
+        console.log(error)
+        downloadButtonID.disabled = true
+    }
+
+    outputID.textContent = '' + result
 }
 
+// Set training session name to current date
+trainNameID.defaultValue = new Date().toISOString().slice(0, 10)
+
+// Change tab key to work like in a text editor
+textareaID.onkeydown = function (e) {
+    if (e.keyCode === 9 || e.which === 9) {
+        e.preventDefault();
+        var s = this.selectionStart;
+        this.value = this.value.substring(0, this.selectionStart) + "\t" + this.value.substring(this.selectionEnd);
+        this.selectionEnd = s + 1;
+    }
+}
+
+// Show output when there's user input
+textareaID.addEventListener('input', updateMessage)
+trainNameID.addEventListener('input', updateMessage)
+
+// Show the output for the default training session
+updateMessage()
+
+
+/********************
+ * EXAMPLES SECTION *
+ ********************/
+
+// We dynamically generate HTML code for these usage examples:
 const usageExamples = [
     {
         title: 'Multiple phases',
