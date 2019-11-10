@@ -43,7 +43,9 @@ function download(data, filename, type) {
 function saveTrain() {
     const input = textareaID.value
     const sessionName = trainNameID.value
-    const data = encodeSession(buildSession(parse(input), sessionName))
+    const data = encodeSession(buildSession(parse(input), sessionName, {
+        description: input
+    }))
 
     download(data, `${sessionName}.BPB`, 'binary')
 }
@@ -61,7 +63,9 @@ function updateMessage() {
     try {
         const input = textareaID.value
         const parsed = parse(input)
-        const train = buildSession(parsed, trainNameID.value)
+        const train = buildSession(parsed, trainNameID.value, {
+            description: input
+        })
 
         try {
             result = describeSession(train.exerciseTarget[0].phases.phase, trainNameID.value)
@@ -19386,10 +19390,7 @@ function preparePhases(item) {
         // Add filler phase at the end to store repetitions
         return [...innerPhases, {
             name: 'filler',
-            duration: {
-                minutes: 0,
-                seconds: 0
-            },
+            duration: emptyDuration(),
             repetitions: item.repetitions,
             blockSize: innerPhases.length + 1
         }]
@@ -19419,7 +19420,7 @@ function buildPhases(phases) {
     })
 }
 
-function buildSession(tree, sessionName) {
+function buildSession(tree, sessionName, options = {}) {
     const phases = buildPhases(preparePhases(tree))
 
     const target = polarData.PbExerciseTarget.create({
@@ -19436,6 +19437,12 @@ function buildSession(tree, sessionName) {
         }),
         exerciseTarget: [target]
     })
+
+    if (options.description) {
+        session.description = polarTypes.PbMultiLineText.create({
+            text: options.description.replace(/\t/g, '  ')
+        })
+    }
 
     console.assert(polarData.PbTrainingSessionTarget.verify(session) === null)
     return session
