@@ -18104,17 +18104,19 @@ function peg$parse(input, options) {
 
       peg$c0 = function(pl) { return pl },
       peg$c1 = function(p) { return { phases: [ p ], recovery_phase: null } },
-      peg$c2 = peg$otherExpectation("phase block"),
+      peg$c2 = peg$otherExpectation("phase repetition_block"),
       peg$c3 = "(",
       peg$c4 = peg$literalExpectation("(", false),
       peg$c5 = ")",
       peg$c6 = peg$literalExpectation(")", false),
       peg$c7 = function(phases) { return phases },
-      peg$c8 = peg$otherExpectation("block"),
-      peg$c9 = /^[xX*]/,
-      peg$c10 = peg$classExpectation(["x", "X", "*"], false, false),
-      peg$c11 = function(repetitions, phases) { 
+      peg$c8 = peg$otherExpectation("repetition_block"),
+      peg$c9 = function(repetitions, phases) { 
       		return { repetitions, ...phases } 
+      	},
+      peg$c10 = peg$otherExpectation("timed_block"),
+      peg$c11 = function(duration, phases) { 
+      		return { duration, ...phases } 
       	},
       peg$c12 = peg$otherExpectation("phase list"),
       peg$c13 = function(p1, pn) { 
@@ -18142,14 +18144,14 @@ function peg$parse(input, options) {
       peg$c28 = peg$otherExpectation("phase name"),
       peg$c29 = function() { return text() },
       peg$c30 = peg$otherExpectation("phase duration"),
-      peg$c31 = function(dur) { return { hours: 0, ...dur } },
+      peg$c31 = function(dur) { return dur },
       peg$c32 = /^[hH]/,
       peg$c33 = peg$classExpectation(["h", "H"], false, false),
-      peg$c34 = function(hours, dur) { return { hours, ...dur } },
-      peg$c35 = function(hours) { return { hours, minutes: 0, seconds: 0 } },
-      peg$c36 = function(minutes, seconds) { return { minutes, seconds } },
-      peg$c37 = function(seconds) { return { seconds, minutes: 0 } },
-      peg$c38 = function(minutes) { return { seconds: 0, minutes } },
+      peg$c34 = function(hours, dur) { return 3600 * hours + dur },
+      peg$c35 = function(hours) { return 3600 * hours },
+      peg$c36 = function(minutes, seconds) { return 60 * minutes + seconds },
+      peg$c37 = function(seconds) { return seconds },
+      peg$c38 = function(minutes) { return 60 * minutes },
       peg$c39 = peg$otherExpectation("apostrophe"),
       peg$c40 = /^[\xB4\u2019`'\u2018]/,
       peg$c41 = peg$classExpectation(["\xB4", "\u2019", "`", "'", "\u2018"], false, false),
@@ -18168,6 +18170,8 @@ function peg$parse(input, options) {
       peg$c54 = peg$classExpectation([" ", "\t", "\n", "\r"], false, false),
       peg$c55 = /^[^\n+()\/]/,
       peg$c56 = peg$classExpectation(["\n", "+", "(", ")", "/"], true, false),
+      peg$c57 = /^[xX*]/,
+      peg$c58 = peg$classExpectation(["x", "X", "*"], false, false),
 
       peg$currPos          = 0,
       peg$savedPos         = 0,
@@ -18417,7 +18421,7 @@ function peg$parse(input, options) {
     return s0;
   }
 
-  function peg$parseblock() {
+  function peg$parserepetition_block() {
     var s0, s1, s2, s3, s4, s5;
 
     peg$silentFails++;
@@ -18426,13 +18430,57 @@ function peg$parse(input, options) {
     if (s1 !== peg$FAILED) {
       s2 = peg$parse_();
       if (s2 !== peg$FAILED) {
-        if (peg$c9.test(input.charAt(peg$currPos))) {
-          s3 = input.charAt(peg$currPos);
-          peg$currPos++;
+        s3 = peg$parsex();
+        if (s3 !== peg$FAILED) {
+          s4 = peg$parse_();
+          if (s4 !== peg$FAILED) {
+            s5 = peg$parsephase_block();
+            if (s5 === peg$FAILED) {
+              s5 = peg$parsephase_as_block();
+            }
+            if (s5 !== peg$FAILED) {
+              peg$savedPos = s0;
+              s1 = peg$c9(s1, s5);
+              s0 = s1;
+            } else {
+              peg$currPos = s0;
+              s0 = peg$FAILED;
+            }
+          } else {
+            peg$currPos = s0;
+            s0 = peg$FAILED;
+          }
         } else {
-          s3 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c10); }
+          peg$currPos = s0;
+          s0 = peg$FAILED;
         }
+      } else {
+        peg$currPos = s0;
+        s0 = peg$FAILED;
+      }
+    } else {
+      peg$currPos = s0;
+      s0 = peg$FAILED;
+    }
+    peg$silentFails--;
+    if (s0 === peg$FAILED) {
+      s1 = peg$FAILED;
+      if (peg$silentFails === 0) { peg$fail(peg$c8); }
+    }
+
+    return s0;
+  }
+
+  function peg$parsetimed_block() {
+    var s0, s1, s2, s3, s4, s5;
+
+    peg$silentFails++;
+    s0 = peg$currPos;
+    s1 = peg$parseduration();
+    if (s1 !== peg$FAILED) {
+      s2 = peg$parse_();
+      if (s2 !== peg$FAILED) {
+        s3 = peg$parsex();
         if (s3 !== peg$FAILED) {
           s4 = peg$parse_();
           if (s4 !== peg$FAILED) {
@@ -18467,7 +18515,7 @@ function peg$parse(input, options) {
     peg$silentFails--;
     if (s0 === peg$FAILED) {
       s1 = peg$FAILED;
-      if (peg$silentFails === 0) { peg$fail(peg$c8); }
+      if (peg$silentFails === 0) { peg$fail(peg$c10); }
     }
 
     return s0;
@@ -18571,9 +18619,12 @@ function peg$parse(input, options) {
       s2 = peg$parsews();
     }
     if (s1 !== peg$FAILED) {
-      s2 = peg$parsephase();
+      s2 = peg$parserepetition_block();
       if (s2 === peg$FAILED) {
-        s2 = peg$parseblock();
+        s2 = peg$parsetimed_block();
+        if (s2 === peg$FAILED) {
+          s2 = peg$parsephase();
+        }
       }
       if (s2 !== peg$FAILED) {
         peg$savedPos = s0;
@@ -19264,6 +19315,20 @@ function peg$parse(input, options) {
     return s0;
   }
 
+  function peg$parsex() {
+    var s0;
+
+    if (peg$c57.test(input.charAt(peg$currPos))) {
+      s0 = input.charAt(peg$currPos);
+      peg$currPos++;
+    } else {
+      s0 = peg$FAILED;
+      if (peg$silentFails === 0) { peg$fail(peg$c58); }
+    }
+
+    return s0;
+  }
+
   peg$result = peg$startRuleFunction();
 
   if (peg$result !== peg$FAILED && peg$currPos === input.length) {
@@ -19331,22 +19396,12 @@ function newPhase(name, duration) {
     })
 }
 
-function newDuration({ hours, minutes, seconds }) {
-    const secs = 3600 * hours + 60 * minutes + seconds
-
+function newDuration(seconds) {
     return polarTypes.PbDuration.create({
-        hours: Math.floor(secs / 3600),
-        minutes: Math.floor((secs % 3600) / 60),
-        seconds: secs % 60,
+        hours: Math.floor(seconds / 3600),
+        minutes: Math.floor((seconds % 3600) / 60),
+        seconds: seconds % 60,
         millis: 0
-    })
-}
-
-function emptyDuration() {
-    return newDuration({
-        hours: 0,
-        minutes: 0,
-        seconds: 0
     })
 }
 
@@ -19374,6 +19429,7 @@ function preparePhases(item) {
     }
 
     if (item.recovery_phase) {
+        console.assert(!item.duration)
         return flatten([
             ...preparePhases({
                 repetitions: item.repetitions - 1,
@@ -19384,13 +19440,34 @@ function preparePhases(item) {
         ])
     }
 
+    if (item.duration) {
+        const blockDuration = getDuration(item.phases)
+        const reps = Math.floor(item.duration / blockDuration)
+
+        // Consider this condition
+        let missing = item.duration - reps * blockDuration
+        let i = 0
+        let phases = [{
+            repetitions: reps,
+            phases: item.phases
+        }]
+        while (missing > 0) {
+            const next = item.phases[i % item.phases.length]
+            missing -= getDuration(next)
+            phases.push(next)
+            i++
+        }
+
+        return preparePhases(phases)
+    }
+
     let last = innerPhases[innerPhases.length - 1]
 
     if (last.hasOwnProperty('repetitions')) {
         // Add filler phase at the end to store repetitions
         return [...innerPhases, {
             name: 'filler',
-            duration: emptyDuration(),
+            duration: 0,
             repetitions: item.repetitions,
             blockSize: innerPhases.length + 1
         }]
@@ -19448,61 +19525,45 @@ function buildSession(tree, sessionName, options = {}) {
     return session
 }
 
-function addDuration(a, b) {
-    return newDuration({
-        hours: a.hours + b.hours,
-        minutes: a.minutes + b.minutes,
-        seconds: a.seconds + b.seconds
-    })
-}
+function getDuration(phase) {
+    if (phase.repetitions) {
+        // It's a block
+        let result = 0
 
-function multiplyDuration(d, by) {
-    return newDuration({
-        hours: d.hours,
-        minutes: by * d.minutes,
-        seconds: by * d.seconds
-    })
+        for (const p of phase.phases) {
+            result = result + getDuration(p)
+        }
+
+        return result * phase.repetitions
+    }
+
+    if (phase instanceof Array) {
+        let result = 0
+
+        for (const p of phase) {
+            const dur = getDuration(p)
+            result = result + getDuration(p)
+        }
+
+        return result
+    }
+
+    // It's a phase
+    const d = phase.duration
+    if (isNaN(d)) {
+        return 3600 * d.hours + 60 * d.minutes + d.seconds
+    }
+
+    return d
 }
 
 function describeSession(phases, trainName) {
-    function getInnerDuration(phase) {
-        if (phase.repetitions) {
-            // It's a block
-            let result = emptyDuration()
-
-            for (const p of phase.phases) {
-                result = addDuration(result, getDuration(p))
-            }
-
-            return result
-        }
-
-        // It's a phase
-        return getDuration(phase)
-    }
-
-    function getDuration(phase) {
-        if (phase.repetitions) {
-            // It's a block
-            let result = emptyDuration()
-
-            for (const p of phase.phases) {
-                result = addDuration(result, getDuration(p))
-            }
-
-            return multiplyDuration(result, phase.repetitions)
-        }
-
-        // It's a phase
-        return phase.duration
-    }
-
     function drawDuration(duration) {
         const {
             hours: h,
             minutes: m,
             seconds: s
-        } = duration
+        } = newDuration(duration)
 
         let result = ''
 
@@ -19530,7 +19591,7 @@ function describeSession(phases, trainName) {
                 result += '\n' + describePhase(p)
             }
 
-            const duration = drawDuration(getInnerDuration(phase))
+            const duration = drawDuration(getDuration(phase.phases))
             return `Repeat x${phase.repetitions} [${duration}]` + result.replace(/\n/g, '\n\t')
         }
 
