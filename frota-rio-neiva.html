@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="frota-rio-neiva/favicon.png">
+    <style>
+        button {
+            background-color: #008CBA;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+        }
+
+        th {
+            padding: 5px 2px;
+        }
+
+        div {
+            padding: 10px;
+        }
+
+        #wrapper {
+            padding: 20px 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="addBoad">
+        <table>
+            <tr>
+                <th id="kayakSymbol">🛶 Kayak </th>
+                <th>
+                    <button onclick="addBoat('kayaks', 1)">+</button></th>
+                <th>
+                    <button onclick="addBoat('kayaks', -1)">-</button></th>
+                <td id="kayak"></td>
+            </tr>
+            <tr>
+                <th id="paddleSymbol">🏄 Paddle </th>
+                <th>
+                    <button onclick="addBoat('paddles', 1)">+</button></th>
+                <th>
+                    <button onclick="addBoat('paddles', -1)">-</button></th>
+                <td id="paddle"></td>
+            </tr>
+        </table>
+
+        <button onclick="launchBoats()">Adicionar barcos</button>
+    </div>
+    <div id="currentBoats"></div>
+    <div id="oldBoats"></div>
+    <script src="https://unpkg.com/gridjs/dist/gridjs.development.js"></script>
+    <script src="frota-rio-neiva/index.js"></script>
+</body>
+
+</html>
