@@ -74,7 +74,7 @@ function removeRow(id) {
 let width = {
     big: "800px",
     medium: "200px",
-    small: "100px"
+    small: "120px"
 }
 
 let currentConfig = {

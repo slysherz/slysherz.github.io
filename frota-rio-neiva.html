@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt">
 
 <head>
     <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
@@ -13,48 +13,62 @@
             text-align: center;
             text-decoration: none;
             display: inline-block;
-            font-size: 16px;
+            font-size: large;
+            border-radius: 4px;
+        }
+
+        .mono {
+            font-family: monospace;
+            font-size: x-large;
+            margin: 2px;
+            padding: 10px 15px;
         }
 
         th {
             padding: 5px 2px;
         }
 
-        div {
-            padding: 10px;
+        .tableDiv {
+            font-size: large;
+            padding: 30px 10px;
         }
 
-        #wrapper {
-            padding: 20px 10px;
+        .addBoard {
+            padding: 10px 40px;
+        }
+
+        #addBoatButton {
+            margin: 20px 0px;
+            padding: 10px 20px;
         }
     </style>
 </head>
 
 <body>
-    <div id="addBoad">
+    <div id="addBoad" class="addBoard">
         <table>
             <tr>
                 <th id="kayakSymbol">🛶 Kayak </th>
                 <th>
-                    <button onclick="addBoat('kayaks', 1)">+</button></th>
+                    <button class="mono" onclick="addBoat('kayaks', 1)">+</button></th>
                 <th>
-                    <button onclick="addBoat('kayaks', -1)">-</button></th>
+                    <button class="mono" onclick="addBoat('kayaks', -1)">-</button></th>
                 <td id="kayak"></td>
             </tr>
             <tr>
                 <th id="paddleSymbol">🏄 Paddle </th>
                 <th>
-                    <button onclick="addBoat('paddles', 1)">+</button></th>
+                    <button class="mono" onclick="addBoat('paddles', 1)">+</button></th>
                 <th>
-                    <button onclick="addBoat('paddles', -1)">-</button></th>
+                    <button class="mono" onclick="addBoat('paddles', -1)">-</button></th>
                 <td id="paddle"></td>
             </tr>
         </table>
 
-        <button onclick="launchBoats()">Adicionar barcos</button>
+        <button id="addBoatButton" onclick="launchBoats()">Adicionar barcos</button>
     </div>
-    <div id="currentBoats"></div>
-    <div id="oldBoats"></div>
+    <div id="currentBoats" class="tableDiv"></div>
+    <div id="oldBoats" class="tableDiv"></div>
     <script src="https://unpkg.com/gridjs/dist/gridjs.development.js"></script>
     <script src="/frota-rio-neiva/index.js"></script>
 </body>
