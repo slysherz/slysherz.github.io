@@ -71,6 +71,10 @@ function removeRow(id) {
     drawGrids()
 }
 
+function loadNotes(id, rowId) {
+    currentBoats[id][2] = document.getElementById(rowId).innerText
+}
+
 let width = {
     big: "800px",
     medium: "200px",
@@ -90,8 +94,14 @@ let currentConfig = {
         },
         {
             name: "Nota",
-            formatter: (id) => {
-                return gridjs.html("<div contenteditable></div>")
+            formatter: (_, { _cells }) => {
+                const id = _cells[3].data
+
+                console.assert(typeof id === 'number')
+
+                const rowId = `row${0 + id}`
+
+                return gridjs.html(`<div contenteditable id="${rowId}" onInput="loadNotes(${id}, '${rowId}')"></div>`)
             },
             width: width.big,
         },
@@ -131,9 +141,6 @@ let oldConfig = {
         },
         {
             name: "Nota",
-            formatter: (id) => {
-                return gridjs.html("<div contenteditable></div>")
-            },
             width: width.big,
         }],
     language: {
