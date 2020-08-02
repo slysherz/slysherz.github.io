@@ -71,23 +71,29 @@ function removeRow(id) {
     drawGrids()
 }
 
+let width = {
+    big: "800px",
+    medium: "200px",
+    small: "100px"
+}
+
 let currentConfig = {
     columns: [
         {
             name: 'Barcos na água',
             formatter: drawBoats,
-            width: "15%"
+            width: width.medium
         }, {
             name: 'Hora de entrada',
             formatter: drawTime,
-            width: "5%"
+            width: width.small
         },
         {
             name: "Nota",
             formatter: (id) => {
                 return gridjs.html("<div contenteditable></div>")
             },
-            width: "50%",
+            width: width.big,
         },
         {
             name: '',
@@ -99,11 +105,12 @@ let currentConfig = {
                     }
                 }, 'Terminar');
             },
-            width: "5%"
+            width: width.small
         }],
     language: {
         noRecordsFound: 'Nenhum barco na água',
     },
+    width: "1500px",
     data: currentBoats
 }
 
@@ -112,26 +119,27 @@ let oldConfig = {
         {
             name: 'Histórico',
             formatter: drawBoats,
-            width: "15%"
+            width: width.medium
         }, {
             name: 'Hora de entrada',
             formatter: drawTime,
-            width: "5%"
+            width: width.small
         }, {
             name: 'Hora de saída',
             formatter: drawTime,
-            width: "5%"
+            width: width.small
         },
         {
             name: "Nota",
             formatter: (id) => {
                 return gridjs.html("<div contenteditable></div>")
             },
-            width: "50%",
+            width: width.big,
         }],
     language: {
         noRecordsFound: 'Nenhuma entrada no histórico',
     },
+    width: "1500px",
     data: oldBoats
 }
 
