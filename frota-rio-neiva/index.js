@@ -90,15 +90,42 @@ function drawStartTimeAfterFinish() {
     return ""
 }
 
+function drawNote(note, { _cells }) {
+    const id = _cells[0].data.id
+
+    console.assert(typeof id === "number")
+
+    const rowId = `row${id}`
+
+    return gridjs.html(`<div contenteditable id="${rowId}" onInput="loadNotes(${id}, '${rowId}')">${note}</div>`)
+}
+
+function drawOldNote(note, { _cells }) {
+
+    const id = _cells[0].data.id
+    console.assert(typeof id === "number")
+
+    const rowId = `oldRow${id}`
+
+    return gridjs.html(`<div contenteditable id="${rowId}" onInput="loadOldNotes(${id}, '${rowId}')">${note}</div>`)
+}
+
 let currentBoats = []
 let oldBoats = []
 
 function removeRow(id) {
     let [boats, startTime, note] = currentBoats.splice(id, 1)[0]
 
+    for (let i = 0; i < oldBoats.length; i++) {
+        oldBoats[i][0].id++
+    }
+
+    boats.id = 0
+
     oldBoats.unshift([boats, startTime, Date.now(), note])
 
     for (let i = 0; i < currentBoats.length; i++) {
+        currentBoats[i][0].id = i
         currentBoats[i][3] = i
     }
 
@@ -107,6 +134,10 @@ function removeRow(id) {
 
 function loadNotes(id, rowId) {
     currentBoats[id][2] = document.getElementById(rowId).innerText
+}
+
+function loadOldNotes(id, rowId) {
+    oldBoats[id][3] = document.getElementById(rowId).innerText
 }
 
 let width = {
@@ -151,15 +182,7 @@ let currentConfig = {
         },
         {
             name: "Nota",
-            formatter: (note, { _cells }) => {
-                const id = _cells[3].data
-
-                console.assert(typeof id === 'number')
-
-                const rowId = `row${0 + id}`
-
-                return gridjs.html(`<div contenteditable id="${rowId}" onInput="loadNotes(${id}, '${rowId}')">${note}</div>`)
-            },
+            formatter: drawNote,
             width: width.big,
         },
         {
@@ -198,8 +221,9 @@ let oldConfig = {
         },
         {
             name: "Nota",
+            formatter: drawOldNote,
             width: width.big,
-        },],
+        }],
     language: {
         noRecordsFound: 'Nenhuma entrada no histórico',
     },
@@ -223,6 +247,7 @@ function drawGrids() {
 }
 
 function launchBoats() {
+    addingBoats.id = currentBoats.length
     currentBoats.push([addingBoats, Date.now(), "", currentBoats.length])
 
     addingBoats = {
