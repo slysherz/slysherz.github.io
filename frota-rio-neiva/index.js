@@ -56,6 +56,40 @@ function addBoat(boat, count) {
     drawCurrentFleet()
 }
 
+function timeDiff(start, end) {
+    let diffInMilliSeconds = Math.abs(end - start) / 1000;
+
+    // calculate hours
+    const hours = Math.floor(diffInMilliSeconds / 3600) % 24;
+    diffInMilliSeconds -= hours * 3600;
+
+    // calculate minutes
+    const minutes = Math.floor(diffInMilliSeconds / 60) % 60;
+    diffInMilliSeconds -= minutes * 60;
+
+    if (!hours && !minutes) {
+        return "mesmo agora"
+    }
+
+    if (!hours) {
+        return `há ${minutes}m`
+    }
+
+    if (!minutes) {
+        return `há ${hours}h`
+    }
+
+    return `há ${hours}h ${minutes}`
+}
+
+function drawStartTime(time) {
+    return `${drawTime(time)} (${timeDiff(time, Date.now())})`
+}
+
+function drawStartTimeAfterFinish() {
+    return ""
+}
+
 let currentBoats = []
 let oldBoats = []
 
@@ -76,9 +110,10 @@ function loadNotes(id, rowId) {
 }
 
 let width = {
-    big: "800px",
+    big: "600px",
     medium: "200px",
-    small: "120px"
+    small: "150px",
+    total: "1330px"
 }
 
 let currentConfig = {
@@ -89,19 +124,41 @@ let currentConfig = {
             width: width.medium
         }, {
             name: 'Hora de entrada',
-            formatter: drawTime,
+            formatter: (time) => {
+                const ref = gridjs.createRef()
+                const cell = gridjs.h('span', { ref: ref })
+
+                // setTimeout to ensure that the chart wrapper is mounted
+                setTimeout(() => {
+                    setInterval(() => {
+                        if (!ref.current) {
+                            return
+                        }
+
+                        ref.current.innerText = drawStartTime(time);
+                    }, 60000)
+
+                    if (!ref.current) {
+                        return
+                    }
+
+                    ref.current.innerText = drawStartTime(time)
+                }, 0)
+
+                return cell;
+            },
             width: width.small
         },
         {
             name: "Nota",
-            formatter: (_, { _cells }) => {
+            formatter: (note, { _cells }) => {
                 const id = _cells[3].data
 
                 console.assert(typeof id === 'number')
 
                 const rowId = `row${0 + id}`
 
-                return gridjs.html(`<div contenteditable id="${rowId}" onInput="loadNotes(${id}, '${rowId}')"></div>`)
+                return gridjs.html(`<div contenteditable id="${rowId}" onInput="loadNotes(${id}, '${rowId}')">${note}</div>`)
             },
             width: width.big,
         },
@@ -120,7 +177,7 @@ let currentConfig = {
     language: {
         noRecordsFound: 'Nenhum barco na água',
     },
-    width: "1500px",
+    width: width.total,
     data: currentBoats
 }
 
@@ -142,11 +199,11 @@ let oldConfig = {
         {
             name: "Nota",
             width: width.big,
-        }],
+        },],
     language: {
         noRecordsFound: 'Nenhuma entrada no histórico',
     },
-    width: "1500px",
+    width: width.total,
     data: oldBoats
 }
 
