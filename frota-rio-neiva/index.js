@@ -1,13 +1,16 @@
 const paddleEmoji = document.getElementById("paddleSymbol").innerText.substr(0, 2)
 const kayakEmoji = document.getElementById("kayakSymbol").innerText.substr(0, 2)
+const bikeEmoji = document.getElementById("bikeSymbol").innerText.substr(0, 2)
 
 
 let kayakDom = document.getElementById("kayak")
 let paddleDom = document.getElementById("paddle")
+let bikeDom = document.getElementById("bike")
 
 let addingBoats = {
     kayaks: 0,
-    paddles: 0
+    paddles: 0,
+    bikes: 0
 }
 
 function drawBoatType(emoji, count) {
@@ -18,23 +21,30 @@ function drawBoatType(emoji, count) {
     return emoji.repeat(count)
 }
 
-function drawBoats({ kayaks, paddles }) {
-    if (!kayaks && !paddles) {
+function drawBoats({ kayaks, paddles, bikes }) {
+    if (!kayaks && !paddles && !bikes) {
         return "Vazio"
     }
 
     const kayakDraw = drawBoatType(kayakEmoji, kayaks)
     const paddleDraw = drawBoatType(paddleEmoji, paddles)
+    const bikeDraw = drawBoatType(bikeEmoji, bikes)
 
-    if (!kayaks) {
-        return paddleDraw
+    let result = []
+
+    if (kayaks) {
+        result.push(kayakDraw)
     }
 
-    if (!paddles) {
-        return kayakDraw
+    if (paddles) {
+        result.push(paddleDraw)
     }
 
-    return kayakDraw + " | " + paddleDraw
+    if (bikes) {
+        result.push(bikeDraw)
+    }
+
+    return result.join(" | ")
 }
 
 function drawTime(time) {
@@ -48,6 +58,7 @@ function drawTime(time) {
 function drawCurrentFleet() {
     kayakDom.innerText = drawBoatType(kayakEmoji, addingBoats.kayaks)
     paddleDom.innerText = drawBoatType(paddleEmoji, addingBoats.paddles)
+    bikeDom.innerText = drawBoatType(bikeEmoji, addingBoats.bikes)
 }
 
 function addBoat(boat, count) {
@@ -252,7 +263,8 @@ function launchBoats() {
 
     addingBoats = {
         kayaks: 0,
-        paddles: 0
+        paddles: 0,
+        bikes: 0
     }
 
     drawCurrentFleet()
