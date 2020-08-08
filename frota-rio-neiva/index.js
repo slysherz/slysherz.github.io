@@ -179,6 +179,7 @@ function removeRow(id) {
     }
 
     drawGrids()
+    drawCurrentFleet()
 }
 
 function loadNotes(id, rowId) {
