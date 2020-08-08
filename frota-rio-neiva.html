@@ -40,7 +40,7 @@
             padding: 30px 10px;
         }
 
-        .addBoard {
+        #addBoard {
             padding: 10px 40px;
         }
 
@@ -48,35 +48,52 @@
             margin: 20px 0px;
             padding: 10px 20px;
         }
+
+        .inventory {
+            text-align: right;
+        }
+
+        #inventoryTable {
+            width: 1300px;
+        }
     </style>
 </head>
 
 <body>
-    <div id="addBoad" class="addBoard">
-        <table>
+    <div id="addBoard" class="addBoard">
+        <table id="inventoryTable">
+            <colgroup>
+                <col style="width:10%">
+                <col style="width:4%">
+                <col style="width:4%">
+                <col style="width:18%">
+            </colgroup>
             <tr>
-                <th id="kayakSymbol">🛶 Kayak </th>
-                <th>
-                    <button class="mono" onclick="addBoat('kayaks', 1)">+</button></th>
-                <th>
-                    <button class="mono" onclick="addBoat('kayaks', -1)">-</button></th>
+                <th id="kayakSymbol">🛶 Kayak </td>
+                <td>
+                    <button class="mono" onclick="addBoat('kayaks', 1)">+</button></td>
+                <td>
+                    <button class="mono" onclick="addBoat('kayaks', -1)">-</button></td>
                 <td id="kayak"></td>
+                <td id="kayakInventory" class="inventory">🛶🏄🚴</td>
             </tr>
             <tr>
-                <th id="paddleSymbol">🏄 Paddle </th>
-                <th>
-                    <button class="mono" onclick="addBoat('paddles', 1)">+</button></th>
-                <th>
-                    <button class="mono" onclick="addBoat('paddles', -1)">-</button></th>
+                <th id="paddleSymbol">🏄 Paddle </td>
+                <td>
+                    <button class="mono" onclick="addBoat('paddles', 1)">+</button></td>
+                <td>
+                    <button class="mono" onclick="addBoat('paddles', -1)">-</button></td>
                 <td id="paddle"></td>
+                <td id="paddleInventory" class="inventory">🛶🏄🚴</td>
             </tr>
             <tr>
-                <th id="bikeSymbol">🚴 Bicicleta </th>
-                <th>
-                    <button class="mono" onclick="addBoat('bikes', 1)">+</button></th>
-                <th>
-                    <button class="mono" onclick="addBoat('bikes', -1)">-</button></th>
+                <th id="bikeSymbol">🚴 Bicicleta </td>
+                <td>
+                    <button class="mono" onclick="addBoat('bikes', 1)">+</button></td>
+                <td>
+                    <button class="mono" onclick="addBoat('bikes', -1)">-</button></td>
                 <td id="bike"></td>
+                <td id="bikeInventory" class="inventory">🛶🏄🚴</td>
             </tr>
         </table>
 
@@ -84,6 +101,11 @@
     </div>
     <div id="currentBoats" class="tableDiv"></div>
     <div id="oldBoats" class="tableDiv"></div>
+    <!--
+    <div id="controlButtons" lcass="addBoard">
+        <button id="exportHistory">Exportar histórico</button>
+    </div>
+    -->
     <script src="https://unpkg.com/gridjs/dist/gridjs.development.js"></script>
     <script src="/frota-rio-neiva/index.js"></script>
 </body>

@@ -2,15 +2,24 @@ const paddleEmoji = document.getElementById("paddleSymbol").innerText.substr(0, 
 const kayakEmoji = document.getElementById("kayakSymbol").innerText.substr(0, 2)
 const bikeEmoji = document.getElementById("bikeSymbol").innerText.substr(0, 2)
 
+const kayakDom = document.getElementById("kayak")
+const paddleDom = document.getElementById("paddle")
+const bikeDom = document.getElementById("bike")
 
-let kayakDom = document.getElementById("kayak")
-let paddleDom = document.getElementById("paddle")
-let bikeDom = document.getElementById("bike")
+const kayakInventoryDom = document.getElementById("kayakInventory")
+const paddleInventoryDom = document.getElementById("paddleInventory")
+const bikeInventoryDom = document.getElementById("bikeInventory")
 
 let addingBoats = {
     kayaks: 0,
     paddles: 0,
     bikes: 0
+}
+
+const inventory = {
+    kayaks: 15,
+    paddles: 8,
+    bikes: 4
 }
 
 function drawBoatType(emoji, count) {
@@ -55,10 +64,25 @@ function drawTime(time) {
     })
 }
 
+function countBoatsLeft(type) {
+    const onTheWater = currentBoats.reduce((sum, [boats]) => sum + boats[type], 0)
+
+    console.log(inventory[type], addingBoats[type], onTheWater)
+
+    return Math.max(
+        0,
+        inventory[type] - addingBoats[type] - onTheWater)
+}
+
 function drawCurrentFleet() {
     kayakDom.innerText = drawBoatType(kayakEmoji, addingBoats.kayaks)
     paddleDom.innerText = drawBoatType(paddleEmoji, addingBoats.paddles)
     bikeDom.innerText = drawBoatType(bikeEmoji, addingBoats.bikes)
+
+    kayakInventoryDom.innerText = drawBoatType(kayakEmoji, countBoatsLeft("kayaks"))
+    paddleInventoryDom.innerText = drawBoatType(paddleEmoji, countBoatsLeft("paddles"))
+    bikeInventoryDom.innerText = drawBoatType(bikeEmoji, countBoatsLeft("bikes"))
+
 }
 
 function addBoat(boat, count) {
@@ -119,6 +143,20 @@ function drawOldNote(note, { _cells }) {
     const rowId = `oldRow${id}`
 
     return gridjs.html(`<div contenteditable id="${rowId}" onInput="loadOldNotes(${id}, '${rowId}')">${note}</div>`)
+}
+
+function loadBoats() {
+    let result = JSON.parse(localStorage.getItem("currentBoats")) || []
+
+    for (let entry of result) {
+        Object.freeze(entry[0])
+    }
+
+    return result
+}
+
+function saveBoats() {
+
 }
 
 let currentBoats = []
@@ -247,6 +285,8 @@ let currentGrid = new gridjs.Grid(currentConfig).render(document.getElementById(
 let oldGrid = new gridjs.Grid(oldConfig).render(document.getElementById("oldBoats"));
 
 function drawGrids() {
+    // localStorage.setItem("currentBoats", JSON.stringify(currentBoats))
+
     currentConfig.data = currentBoats
 
     currentGrid.updateConfig(currentConfig)
