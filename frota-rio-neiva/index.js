@@ -223,7 +223,7 @@ let width = {
     noteBig: "550px",
     noteSmall: "350px",
     time: "150px",
-    button: "175px",
+    button: "180px",
     total: "1330px"
 }
 
