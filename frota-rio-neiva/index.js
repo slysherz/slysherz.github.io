@@ -1,3 +1,49 @@
+// const gridjs = require("gridjs")
+
+function drawBoatType(emoji, count) {
+    if (!count) {
+        return "Vazio"
+    }
+
+    return emoji.repeat(count)
+}
+
+function drawTime(time) {
+    const date = new Date(time)
+    return date.toLocaleTimeString(navigator.language, {
+        hour: '2-digit',
+        minute: '2-digit'
+    })
+}
+
+function timeDiff(start, end) {
+    let diffInMilliSeconds = Math.abs(end - start) / 1000;
+
+    // calculate hours
+    const hours = Math.floor(diffInMilliSeconds / 3600) % 24;
+    diffInMilliSeconds -= hours * 3600;
+
+    // calculate minutes
+    const minutes = Math.floor(diffInMilliSeconds / 60) % 60;
+    diffInMilliSeconds -= minutes * 60;
+
+    if (!hours && !minutes) {
+        return "mesmo agora"
+    }
+
+    if (!hours) {
+        return `há ${minutes}m`
+    }
+
+    if (!minutes) {
+        return `há ${hours}h`
+    }
+
+    return `há ${hours}h ${minutes}`
+}
+
+
+
 const paddleEmoji = document.getElementById("paddleSymbol").innerText.substr(0, 2)
 const kayakEmoji = document.getElementById("kayakSymbol").innerText.substr(0, 2)
 const bikeEmoji = document.getElementById("bikeSymbol").innerText.substr(0, 2)
@@ -22,13 +68,6 @@ const inventory = {
     bikes: 4
 }
 
-function drawBoatType(emoji, count) {
-    if (!count) {
-        return "Vazio"
-    }
-
-    return emoji.repeat(count)
-}
 
 function drawBoats({ kayaks, paddles, bikes }) {
     if (!kayaks && !paddles && !bikes) {
@@ -56,18 +95,8 @@ function drawBoats({ kayaks, paddles, bikes }) {
     return result.join(" | ")
 }
 
-function drawTime(time) {
-    const date = new Date(time)
-    return date.toLocaleTimeString(navigator.language, {
-        hour: '2-digit',
-        minute: '2-digit'
-    })
-}
-
 function countBoatsLeft(type) {
     const onTheWater = currentBoats.reduce((sum, [boats]) => sum + boats[type], 0)
-
-    console.log(inventory[type], addingBoats[type], onTheWater)
 
     return Math.max(
         0,
@@ -82,39 +111,12 @@ function drawCurrentFleet() {
     kayakInventoryDom.innerText = drawBoatType(kayakEmoji, countBoatsLeft("kayaks"))
     paddleInventoryDom.innerText = drawBoatType(paddleEmoji, countBoatsLeft("paddles"))
     bikeInventoryDom.innerText = drawBoatType(bikeEmoji, countBoatsLeft("bikes"))
-
 }
 
 function addBoat(boat, count) {
     addingBoats[boat] = Math.max(0, addingBoats[boat] + count)
 
     drawCurrentFleet()
-}
-
-function timeDiff(start, end) {
-    let diffInMilliSeconds = Math.abs(end - start) / 1000;
-
-    // calculate hours
-    const hours = Math.floor(diffInMilliSeconds / 3600) % 24;
-    diffInMilliSeconds -= hours * 3600;
-
-    // calculate minutes
-    const minutes = Math.floor(diffInMilliSeconds / 60) % 60;
-    diffInMilliSeconds -= minutes * 60;
-
-    if (!hours && !minutes) {
-        return "mesmo agora"
-    }
-
-    if (!hours) {
-        return `há ${minutes}m`
-    }
-
-    if (!minutes) {
-        return `há ${hours}h`
-    }
-
-    return `há ${hours}h ${minutes}`
 }
 
 function drawStartTime(time) {
@@ -171,12 +173,38 @@ function removeRow(id) {
 
     boats.id = 0
 
-    oldBoats.unshift([boats, startTime, Date.now(), note])
+    oldBoats.unshift([boats, startTime, Date.now(), note, oldBoats.length])
 
     for (let i = 0; i < currentBoats.length; i++) {
         currentBoats[i][0].id = i
         currentBoats[i][3] = i
     }
+
+    drawGrids()
+    drawCurrentFleet()
+}
+
+function deleteBoat(id) {
+    oldBoats.splice(id, 1)
+
+    for (let i = 0; i < oldBoats.length; i++) {
+        oldBoats[i][4] = id
+        oldBoats[i][5] = id
+    }
+
+    drawGrids()
+    drawCurrentFleet()
+}
+
+function restoreBoat(id) {
+    const [boat, starTime, _, note] = oldBoats.splice(id, 1)[0]
+
+    for (let i = 0; i < oldBoats.length; i++) {
+        oldBoats[i][4] = id
+        oldBoats[i][5] = id
+    }
+
+    currentBoats.push([boat, starTime, note, currentBoats.length])
 
     drawGrids()
     drawCurrentFleet()
@@ -191,9 +219,11 @@ function loadOldNotes(id, rowId) {
 }
 
 let width = {
-    big: "600px",
-    medium: "200px",
-    small: "150px",
+    title: "150px",
+    noteBig: "550px",
+    noteSmall: "350px",
+    time: "150px",
+    button: "175px",
     total: "1330px"
 }
 
@@ -202,7 +232,7 @@ let currentConfig = {
         {
             name: 'Barcos na água',
             formatter: drawBoats,
-            width: width.medium
+            width: width.title
         }, {
             name: 'Hora de entrada',
             formatter: (time) => {
@@ -233,25 +263,25 @@ let currentConfig = {
         {
             name: "Nota",
             formatter: drawNote,
-            width: width.big,
+            width: width.noteBig
         },
         {
             name: '',
             formatter: (id) => {
                 return gridjs.h('button', {
-                    className: 'py-2 mb-4 px-4 border rounded-md text-white bg-blue-600',
                     onClick: () => {
                         removeRow(id)
                     }
                 }, 'Terminar');
             },
-            width: width.small
+            width: width.button
         }],
     language: {
         noRecordsFound: 'Nenhum barco na água',
     },
     width: width.total,
-    data: currentBoats
+    data: currentBoats,
+
 }
 
 let oldConfig = {
@@ -259,21 +289,36 @@ let oldConfig = {
         {
             name: 'Histórico',
             formatter: drawBoats,
-            width: width.medium
+            width: width.title
         }, {
             name: 'Hora de entrada',
             formatter: drawTime,
-            width: width.small
+            width: width.time
         }, {
             name: 'Hora de saída',
             formatter: drawTime,
-            width: width.small
+            width: width.time
         },
         {
             name: "Nota",
             formatter: drawOldNote,
-            width: width.big,
-        }],
+            width: width.noteSmall,
+        }, {
+            name: '',
+            formatter: (id) => {
+                return [
+                    gridjs.h('button', {
+                        onClick: () => {
+                            restoreBoat(id)
+                        }
+                    }, 'Restaurar'), gridjs.h('button', {
+                        onClick: () => {
+                            deleteBoat(id)
+                        }
+                    }, 'Apagar')]
+            },
+            width: width.button
+        },],
     language: {
         noRecordsFound: 'Nenhuma entrada no histórico',
     },
