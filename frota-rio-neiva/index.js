@@ -357,5 +357,41 @@ function launchBoats() {
     drawGrids()
 }
 
+function exportHistory() {
+    let lines = oldBoats.map(([boats, start, end]) => [
+        timeDiff(start, end),
+        boats.kayaks,
+        boats.paddles,
+        boats.bikes,
+    ].join(", "))
+
+    lines.unshift("duracao,kayaks,paddles,bicicletas\n")
+
+    let csvContent = lines.join("\n")
+    let today = new Date()
+    let filename = `${today.getDay()}-${today.getMonth()}-${today.getFullYear()}.csv`
+
+    // CSV file
+    let csvFile = new Blob([csvContent], { type: "text/csv" });
+
+    // Download link
+    let downloadLink = document.createElement("a");
+
+    // File name
+    downloadLink.download = filename;
+
+    // Create a link to the file
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+
+    // Hide download link
+    downloadLink.style.display = "none";
+
+    // Add the link to DOM
+    document.body.appendChild(downloadLink);
+
+    // Click download link
+    downloadLink.click();
+}
+
 drawCurrentFleet()
 drawGrids()
