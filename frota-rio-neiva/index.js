@@ -202,7 +202,7 @@ let width = {
     noteSmall: "350px",
     time: "150px",
     button: "180px",
-    total: "1330px"
+    total: "1300px"
 }
 
 let currentConfig = {
