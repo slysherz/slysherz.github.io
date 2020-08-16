@@ -21,8 +21,16 @@
         }
 
         button:hover {
-            background-color: darkblue;
+            background-color: blue;
             color: white;
+        }
+
+        .dangerButton {
+            background-color: rgb(245, 108, 108);
+        }
+
+        .dangerButton:hover {
+            background-color: red;
         }
 
         .mono {
@@ -30,6 +38,12 @@
             font-size: x-large;
             margin: 2px;
             padding: 10px 15px;
+        }
+
+        .monoSmall {
+            font-family: monospace;
+            float: right;
+            font-size: x-large;
         }
 
         th {
@@ -45,7 +59,7 @@
             padding: 10px 40px;
         }
 
-        #addBoatButton {
+        .bigButton {
             margin: 20px 0px;
             padding: 10px 20px;
         }
@@ -56,6 +70,10 @@
 
         #inventoryTable {
             width: 1280px;
+        }
+
+        #exportHistoryButton {
+            margin: 10px 25px;
         }
     </style>
 </head>
@@ -98,15 +116,12 @@
             </tr>
         </table>
 
-        <button id="addBoatButton" onclick="launchBoats()">Adicionar barcos</button>
+        <button class="bigButton" onclick="launchBoats()">Adicionar barcos</button>
     </div>
     <div id="currentBoats" class="tableDiv"></div>
     <div id="oldBoats" class="tableDiv"></div>
-    <!--
-    <div id="controlButtons" lcass="addBoat">
-        <button id="exportHistory">Exportar histórico</button>
-    </div>
-    -->
+    <button id="exportHistoryButton" class="bigButton" onclick="exportHistory()">Exportar histórico</button>
+
     <script src="/frota-rio-neiva/dependencies/gridjs.production.min.js"></script>
     <script src="/frota-rio-neiva/index.js"></script>
 </body>

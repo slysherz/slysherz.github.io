@@ -1,5 +1,19 @@
 // const gridjs = require("gridjs")
 
+function formatDate(date) {
+    var d = new Date(date),
+        month = '' + (d.getMonth() + 1),
+        day = '' + d.getDate(),
+        year = d.getFullYear();
+
+    if (month.length < 2)
+        month = '0' + month;
+    if (day.length < 2)
+        day = '0' + day;
+
+    return [day, month, year].join('-');
+}
+
 function drawBoatType(emoji, count) {
     if (!count) {
         return "Vazio"
@@ -14,6 +28,21 @@ function drawTime(time) {
         hour: '2-digit',
         minute: '2-digit'
     })
+}
+
+function drawDuration(minutes) {
+    let hours = Math.floor(minutes / 60)
+    minutes -= hours * 60
+
+    if (!hours) {
+        return `${minutes}m`
+    }
+
+    if (!minutes) {
+        return `${hours}h`
+    }
+
+    return `${hours}h ${minutes}m`
 }
 
 function timeDiff(start, end) {
@@ -138,7 +167,7 @@ function drawNote(note, { _cells }) {
 }
 
 function drawOldNote(note, { _cells }) {
-    const id = _cells[4].data
+    const id = _cells[3].data
     console.assert(typeof id === "number")
 
     const rowId = `oldRow${id}`
@@ -164,28 +193,38 @@ let currentBoats = []
 let oldBoats = []
 
 function removeRow(id) {
-    let [boats, startTime, note] = currentBoats.splice(id, 1)[0]
+    let [boats, start, note] = currentBoats.splice(id, 1)[0]
 
-    oldBoats.unshift([boats, startTime, Date.now(), note, 0])
+    const end = Date.now()
 
-    drawGrids()
-    drawCurrentFleet()
+    // In minutes
+    const duration = Math.floor(((end - start) / 1000) / 60)
+
+    oldBoats.unshift([
+        boats,
+        {
+            start,
+            end,
+            duration
+        },
+        note,
+        0])
+
+    redraw()
 }
 
 function deleteBoat(id) {
     oldBoats.splice(id, 1)
 
-    drawGrids()
-    drawCurrentFleet()
+    drawOldGrid()
 }
 
 function restoreBoat(id) {
-    const [boat, starTime, _, note] = oldBoats.splice(id, 1)[0]
+    const [boat, { start }, note] = oldBoats.splice(id, 1)[0]
 
-    currentBoats.push([boat, starTime, note, 0])
+    currentBoats.push([boat, start, note, 0])
 
-    drawGrids()
-    drawCurrentFleet()
+    redraw()
 }
 
 function loadNotes(id, rowId) {
@@ -193,15 +232,19 @@ function loadNotes(id, rowId) {
 }
 
 function loadOldNotes(id, rowId) {
-    oldBoats[id][3] = document.getElementById(rowId).innerText
+    oldBoats[id][2] = document.getElementById(rowId).innerText
 }
 
 let width = {
-    title: "150px",
-    noteBig: "550px",
-    noteSmall: "350px",
-    time: "150px",
+    title: "140px",
     button: "180px",
+
+    time: "150px",
+    noteBig: "550px",
+
+    bigTime: "300px",
+    noteSmall: "390px",
+
     total: "1300px"
 }
 
@@ -269,13 +312,29 @@ let oldConfig = {
             formatter: drawBoats,
             width: width.title
         }, {
-            name: 'Hora de entrada',
-            formatter: drawTime,
-            width: width.time
-        }, {
-            name: 'Hora de saída',
-            formatter: drawTime,
-            width: width.time
+            name: 'Duração',
+            formatter: (ride, { _cells }) => {
+                const { start, end, duration } = ride
+
+                return [
+                    `${drawTime(start)} → ${drawTime(end)} (${drawDuration(duration)})`,
+                    gridjs.h('button', {
+                        className: "monoSmall",
+                        onClick: () => {
+                            ride.duration = Math.max(0, Math.floor(duration / 30 - 1) * 30)
+                            drawOldGrid()
+                        }
+                    }, '-'),
+                    gridjs.h('button', {
+                        className: "monoSmall",
+                        onClick: () => {
+                            ride.duration = Math.max(0, Math.floor(duration / 30 + 1) * 30)
+                            drawOldGrid()
+                        }
+                    }, '+')
+                ]
+            },
+            width: width.bigTime
         },
         {
             name: "Nota",
@@ -289,7 +348,9 @@ let oldConfig = {
                         onClick: () => {
                             restoreBoat(id)
                         }
-                    }, 'Restaurar'), gridjs.h('button', {
+                    }, 'Restaurar'),
+                    gridjs.h('button', {
+                        className: "dangerButton",
                         onClick: () => {
                             deleteBoat(id)
                         }
@@ -308,7 +369,7 @@ let oldConfig = {
 let currentGrid = new gridjs.Grid(currentConfig).render(document.getElementById("currentBoats"));
 let oldGrid = new gridjs.Grid(oldConfig).render(document.getElementById("oldBoats"));
 
-function drawGrids() {
+function drawCurrentGrid() {
     // localStorage.setItem("currentBoats", JSON.stringify(currentBoats))
 
     // Clean up row ids
@@ -316,18 +377,21 @@ function drawGrids() {
         currentBoats[i][3] = i
     }
 
-    for (let i = 0; i < oldBoats.length; i++) {
-        oldBoats[i][4] = i
-    }
-
     currentConfig.data = currentBoats
-
     currentGrid.updateConfig(currentConfig)
     currentGrid.forceRender()
+}
+
+function drawOldGrid() {
+    // Clean up row ids
+    for (let i = 0; i < oldBoats.length; i++) {
+        oldBoats[i][3] = i
+    }
 
     oldConfig.data = oldBoats
     oldGrid.updateConfig(oldConfig)
     oldGrid.forceRender()
+
 }
 
 function launchBoats() {
@@ -339,13 +403,18 @@ function launchBoats() {
         bikes: 0
     }
 
+    redraw()
+}
+
+function redraw() {
     drawCurrentFleet()
-    drawGrids()
+    drawCurrentGrid()
+    drawOldGrid()
 }
 
 function exportHistory() {
-    let lines = oldBoats.map(([boats, start, end]) => [
-        timeDiff(start, end),
+    let lines = oldBoats.map(([boats, { duration }]) => [
+        duration,
         boats.kayaks,
         boats.paddles,
         boats.bikes,
@@ -355,7 +424,7 @@ function exportHistory() {
 
     let csvContent = lines.join("\n")
     let today = new Date()
-    let filename = `${today.getDay()}-${today.getMonth()}-${today.getFullYear()}.csv`
+    let filename = `${formatDate(today)}.csv`
 
     // CSV file
     let csvFile = new Blob([csvContent], { type: "text/csv" });
@@ -379,5 +448,4 @@ function exportHistory() {
     downloadLink.click();
 }
 
-drawCurrentFleet()
-drawGrids()
+redraw()
