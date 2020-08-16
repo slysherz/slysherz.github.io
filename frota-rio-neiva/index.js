@@ -128,7 +128,7 @@ function drawStartTimeAfterFinish() {
 }
 
 function drawNote(note, { _cells }) {
-    const id = _cells[0].data.id
+    const id = _cells[3].data
 
     console.assert(typeof id === "number")
 
@@ -138,8 +138,7 @@ function drawNote(note, { _cells }) {
 }
 
 function drawOldNote(note, { _cells }) {
-
-    const id = _cells[0].data.id
+    const id = _cells[4].data
     console.assert(typeof id === "number")
 
     const rowId = `oldRow${id}`
@@ -167,18 +166,7 @@ let oldBoats = []
 function removeRow(id) {
     let [boats, startTime, note] = currentBoats.splice(id, 1)[0]
 
-    for (let i = 0; i < oldBoats.length; i++) {
-        oldBoats[i][0].id++
-    }
-
-    boats.id = 0
-
-    oldBoats.unshift([boats, startTime, Date.now(), note, oldBoats.length])
-
-    for (let i = 0; i < currentBoats.length; i++) {
-        currentBoats[i][0].id = i
-        currentBoats[i][3] = i
-    }
+    oldBoats.unshift([boats, startTime, Date.now(), note, 0])
 
     drawGrids()
     drawCurrentFleet()
@@ -187,11 +175,6 @@ function removeRow(id) {
 function deleteBoat(id) {
     oldBoats.splice(id, 1)
 
-    for (let i = 0; i < oldBoats.length; i++) {
-        oldBoats[i][4] = id
-        oldBoats[i][5] = id
-    }
-
     drawGrids()
     drawCurrentFleet()
 }
@@ -199,12 +182,7 @@ function deleteBoat(id) {
 function restoreBoat(id) {
     const [boat, starTime, _, note] = oldBoats.splice(id, 1)[0]
 
-    for (let i = 0; i < oldBoats.length; i++) {
-        oldBoats[i][4] = id
-        oldBoats[i][5] = id
-    }
-
-    currentBoats.push([boat, starTime, note, currentBoats.length])
+    currentBoats.push([boat, starTime, note, 0])
 
     drawGrids()
     drawCurrentFleet()
@@ -333,6 +311,15 @@ let oldGrid = new gridjs.Grid(oldConfig).render(document.getElementById("oldBoat
 function drawGrids() {
     // localStorage.setItem("currentBoats", JSON.stringify(currentBoats))
 
+    // Clean up row ids
+    for (let i = 0; i < currentBoats.length; i++) {
+        currentBoats[i][3] = i
+    }
+
+    for (let i = 0; i < oldBoats.length; i++) {
+        oldBoats[i][4] = i
+    }
+
     currentConfig.data = currentBoats
 
     currentGrid.updateConfig(currentConfig)
@@ -344,7 +331,6 @@ function drawGrids() {
 }
 
 function launchBoats() {
-    addingBoats.id = currentBoats.length
     currentBoats.push([addingBoats, Date.now(), "", currentBoats.length])
 
     addingBoats = {
