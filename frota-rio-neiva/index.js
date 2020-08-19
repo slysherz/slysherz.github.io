@@ -1,5 +1,9 @@
 // const gridjs = require("gridjs")
 
+function clone(data) {
+    return JSON.parse(JSON.stringify(data))
+}
+
 function formatDate(date) {
     var d = new Date(date),
         month = '' + (d.getMonth() + 1),
@@ -91,11 +95,7 @@ let addingBoats = {
     bikes: 0
 }
 
-const inventory = {
-    kayaks: 15,
-    paddles: 8,
-    bikes: 4
-}
+let inventory = loadInventory()
 
 
 function drawBoats({ kayaks, paddles, bikes }) {
@@ -175,18 +175,90 @@ function drawOldNote(note, { _cells }) {
     return gridjs.html(`<div contenteditable id="${rowId}" onInput="loadOldNotes(${id}, '${rowId}')">${note}</div>`)
 }
 
-function loadBoats() {
-    let result = JSON.parse(localStorage.getItem("currentBoats")) || []
-
-    for (let entry of result) {
-        Object.freeze(entry[0])
+function loadInventory() {
+    if (typeof Storage === "undefined") {
+        return
     }
 
-    return result
+    let inventoryJSON = JSON.parse(localStorage.getItem("inventory")) || {}
+
+    return {
+        kayaks: inventoryJSON.kayaks || 15,
+        paddles: inventoryJSON.paddles || 8,
+        bikes: inventoryJSON.bikes || 4,
+    }
 }
 
-function saveBoats() {
+function saveInventory() {
+    if (typeof Storage === "undefined") {
+        return
+    }
 
+    localStorage.setItem("inventory", JSON.stringify(inventory))
+}
+
+function loadCurrentBoats() {
+    if (typeof Storage === "undefined") {
+        return
+    }
+
+    let currentBoatsJSON = JSON.parse(localStorage.getItem("currentBoats")) || []
+    currentBoats = []
+
+    for (let entry of currentBoatsJSON) {
+        if (!entry || !entry[0]) {
+            continue
+        }
+
+        currentBoats.push([
+            {
+                kayaks: entry[0].kayaks || 0,
+                paddles: entry[0].paddles || 0,
+                bikes: entry[0].bikes || 0,
+            },
+            entry[1] || 0,
+            entry[2] || "",
+            entry[3] || 0
+        ])
+    }
+}
+
+function loadOldBoats() {
+    if (typeof Storage === "undefined") {
+        return
+    }
+
+    let oldBoatsJSON = JSON.parse(localStorage.getItem("oldBoats")) || []
+    oldBoats = []
+
+    for (let entry of oldBoatsJSON) {
+        if (!entry || !entry[0] || !entry[1]) {
+            continue
+        }
+
+        oldBoats.push([
+            {
+                kayaks: entry[0].kayaks || 0,
+                paddles: entry[0].paddles || 0,
+                bikes: entry[0].bikes || 0,
+            },
+            {
+                start: entry[1].start || 0,
+                end: entry[1].end || 0,
+                duration: entry[1].duration || 0,
+            },
+            entry[2] || "",
+            entry[3] || 0
+        ])
+    }
+}
+
+function saveBoats(tag, data) {
+    if (typeof Storage === "undefined") {
+        return
+    }
+
+    localStorage.setItem(tag, JSON.stringify(data))
 }
 
 let currentBoats = []
@@ -229,10 +301,14 @@ function restoreBoat(id) {
 
 function loadNotes(id, rowId) {
     currentBoats[id][2] = document.getElementById(rowId).innerText
+
+    saveBoats("currentBoats", currentBoats)
 }
 
 function loadOldNotes(id, rowId) {
     oldBoats[id][2] = document.getElementById(rowId).innerText
+
+    saveBoats("oldBoats", currentBoats)
 }
 
 let width = {
@@ -290,6 +366,7 @@ let currentConfig = {
             name: '',
             formatter: (id) => {
                 return gridjs.h('button', {
+                    class: "frotaButton ",
                     onClick: () => {
                         removeRow(id)
                     }
@@ -301,7 +378,7 @@ let currentConfig = {
         noRecordsFound: 'Nenhum barco na água',
     },
     width: width.total,
-    data: currentBoats,
+    data: clone(currentBoats),
 
 }
 
@@ -315,20 +392,21 @@ let oldConfig = {
             name: 'Duração',
             formatter: (ride, { _cells }) => {
                 const { start, end, duration } = ride
+                const id = _cells[3].data
 
                 return [
                     `${drawTime(start)} → ${drawTime(end)} (${drawDuration(duration)})`,
                     gridjs.h('button', {
-                        className: "monoSmall",
+                        className: "frotaButton monoSmall",
                         onClick: () => {
-                            ride.duration = Math.max(0, Math.floor(duration / 30 - 1) * 30)
+                            oldBoats[id][1].duration = Math.max(0, Math.floor(duration / 30 - 1) * 30)
                             drawOldGrid()
                         }
                     }, '-'),
                     gridjs.h('button', {
-                        className: "monoSmall",
+                        className: "frotaButton monoSmall",
                         onClick: () => {
-                            ride.duration = Math.max(0, Math.floor(duration / 30 + 1) * 30)
+                            oldBoats[id][1].duration = Math.max(0, Math.floor(duration / 30 + 1) * 30)
                             drawOldGrid()
                         }
                     }, '+')
@@ -345,12 +423,13 @@ let oldConfig = {
             formatter: (id) => {
                 return [
                     gridjs.h('button', {
+                        class: "frotaButton",
                         onClick: () => {
                             restoreBoat(id)
                         }
                     }, 'Restaurar'),
                     gridjs.h('button', {
-                        className: "dangerButton",
+                        className: "frotaButton dangerButton",
                         onClick: () => {
                             deleteBoat(id)
                         }
@@ -360,9 +439,22 @@ let oldConfig = {
         },],
     language: {
         noRecordsFound: 'Nenhuma entrada no histórico',
+        pagination: {
+            'previous': '⬅',
+            'next': '➡',
+            'navigate': (page, pages) => `Página ${page} de ${pages}`,
+            'page': (n) => `página ${n}`,
+            'showing': 'a mostrar',
+            'of': 'de',
+            'to': 'até',
+            'results': ' ',
+        }
     },
     width: width.total,
-    data: oldBoats
+    pagination: {
+        limit: 5
+    },
+    data: clone(oldBoats)
 }
 
 
@@ -370,25 +462,27 @@ let currentGrid = new gridjs.Grid(currentConfig).render(document.getElementById(
 let oldGrid = new gridjs.Grid(oldConfig).render(document.getElementById("oldBoats"));
 
 function drawCurrentGrid() {
-    // localStorage.setItem("currentBoats", JSON.stringify(currentBoats))
+    saveBoats("currentBoats", currentBoats)
 
     // Clean up row ids
     for (let i = 0; i < currentBoats.length; i++) {
         currentBoats[i][3] = i
     }
 
-    currentConfig.data = currentBoats
+    currentConfig.data = clone(currentBoats)
     currentGrid.updateConfig(currentConfig)
     currentGrid.forceRender()
 }
 
 function drawOldGrid() {
+    saveBoats("oldBoats", oldBoats)
+
     // Clean up row ids
     for (let i = 0; i < oldBoats.length; i++) {
         oldBoats[i][3] = i
     }
 
-    oldConfig.data = oldBoats
+    oldConfig.data = clone(oldBoats)
     oldGrid.updateConfig(oldConfig)
     oldGrid.forceRender()
 
@@ -407,6 +501,7 @@ function launchBoats() {
 }
 
 function redraw() {
+    saveInventory()
     drawCurrentFleet()
     drawCurrentGrid()
     drawOldGrid()
@@ -448,4 +543,13 @@ function exportHistory() {
     downloadLink.click();
 }
 
+function exportAndClear() {
+    exportHistory()
+    oldBoats = []
+    saveBoats('oldBoats', oldBoats)
+    redraw()
+}
+
+loadCurrentBoats()
+loadOldBoats()
 redraw()

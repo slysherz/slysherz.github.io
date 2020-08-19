@@ -6,7 +6,7 @@
     <link href="/frota-rio-neiva/dependencies/mermaid.min.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/frota-rio-neiva/favicon.png">
     <style>
-        button {
+        .frotaButton {
             background-color: #008CBA;
             border: none;
             color: white;
@@ -20,7 +20,7 @@
             transition-duration: 0.4s;
         }
 
-        button:hover {
+        .frotaButton:hover {
             background-color: blue;
             color: white;
         }
@@ -75,6 +75,10 @@
         #exportHistoryButton {
             margin: 10px 25px;
         }
+
+        .gridjs-pages {
+            color: black !important
+        }
     </style>
 </head>
 
@@ -90,37 +94,38 @@
             <tr>
                 <th id="kayakSymbol">🛶 Kayak </th>
                 <td>
-                    <button class="mono" onclick="addBoat('kayaks', 1)">+</button></td>
+                    <button class="frotaButton mono" onclick="addBoat('kayaks', 1)">+</button></td>
                 <td>
-                    <button class="mono" onclick="addBoat('kayaks', -1)">-</button></td>
+                    <button class="frotaButton mono" onclick="addBoat('kayaks', -1)">-</button></td>
                 <td id="kayak"></td>
                 <td id="kayakInventory" class="inventory">🛶🏄🚴</td>
             </tr>
             <tr>
                 <th id="paddleSymbol">🏄 Paddle </th>
                 <td>
-                    <button class="mono" onclick="addBoat('paddles', 1)">+</button></td>
+                    <button class="frotaButton mono" onclick="addBoat('paddles', 1)">+</button></td>
                 <td>
-                    <button class="mono" onclick="addBoat('paddles', -1)">-</button></td>
+                    <button class="frotaButton mono" onclick="addBoat('paddles', -1)">-</button></td>
                 <td id="paddle"></td>
                 <td id="paddleInventory" class="inventory">🛶🏄🚴</td>
             </tr>
             <tr>
                 <th id="bikeSymbol">🚴 Bicicleta </th>
                 <td>
-                    <button class="mono" onclick="addBoat('bikes', 1)">+</button></td>
+                    <button class="frotaButton mono" onclick="addBoat('bikes', 1)">+</button></td>
                 <td>
-                    <button class="mono" onclick="addBoat('bikes', -1)">-</button></td>
+                    <button class="frotaButton mono" onclick="addBoat('bikes', -1)">-</button></td>
                 <td id="bike"></td>
                 <td id="bikeInventory" class="inventory">🛶🏄🚴</td>
             </tr>
         </table>
 
-        <button class="bigButton" onclick="launchBoats()">Adicionar barcos</button>
+        <button class="frotaButton bigButton" onclick="launchBoats()">Adicionar barcos</button>
     </div>
     <div id="currentBoats" class="tableDiv"></div>
     <div id="oldBoats" class="tableDiv"></div>
-    <button id="exportHistoryButton" class="bigButton" onclick="exportHistory()">Exportar histórico</button>
+    <button id="exportHistoryButton" class="frotaButton bigButton" onclick="exportHistory()">Exportar histórico</button>
+    <button id="clearAll" class="frotaButton bigButton" onclick="exportAndClear()">Exportar e limpar histórico</button>
 
     <script src="/frota-rio-neiva/dependencies/gridjs.production.min.js"></script>
     <script src="/frota-rio-neiva/index.js"></script>
