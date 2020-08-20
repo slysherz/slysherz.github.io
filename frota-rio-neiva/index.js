@@ -152,10 +152,6 @@ function drawStartTime(time) {
     return `${drawTime(time)} (${timeDiff(time, Date.now())})`
 }
 
-function drawStartTimeAfterFinish() {
-    return ""
-}
-
 function drawNote(note, { _cells }) {
     const id = _cells[3].data
 
