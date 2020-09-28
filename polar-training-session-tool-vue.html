@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+
+    <title>Polar Training Session Tool</title>
+    <meta name="description" content="Simple tool to create training plans for your Polar Watch.">
+    <meta name="author" content="slysherz">
+</head>
+
+<body>
+    <div class='content' id="app">
+        <h2>Create a new training session</h2>
+        <p>Simple tool to create training plans for your Polar Watch.</p>
+        <p>Choose the name for your training session: </p>
+        <input v-model="sessionName" type='text' id='train-name' spellcheck='false' value='John'>
+        <br>
+
+        <p>Describe your training session: </p>
+        <editor v-model="sessionDescription" lang="text" height="300" @init="initEditor"></editor>
+
+        <br>
+        <button type='button' id='download-button' :disabled='isDownloadDisabled'
+            @click.prevent="download()">Download</button>
+        <p id='output'>{{ updateMessage() }}</p>
+
+        <div id='usage-examples'>
+            <h2>How to use</h2>
+            <div v-for="example in usageExamples">
+                <h4>{{ example.title }}</h4>
+
+                <p v-if="example.details">{{ example.details }}</p>
+
+                <textarea v-for='block in example.blocks' class='editor' :rows='maxLinesBlock(example.blocks)' cols='25'
+                    readonly spellcheck='false'>{{ block }} </textarea>
+
+            </div>
+        </div>
+    </div>
+
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        .content {
+            width: 500px;
+            margin: auto;
+        }
+
+        input {
+            width: 15em;
+            font-family: monospace;
+        }
+
+        #output {
+            white-space: pre;
+            font-family: monospace;
+        }
+
+        button:disabled,
+        button[disabled] {
+            border: 1px solid #999999;
+            background-color: #cccccc;
+            color: #666666;
+        }
+
+        .editor {
+            /* you must provide font-family font-size line-height. Example:*/
+            font-family: Consolas, Menlo, Courier, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 5px;
+            resize: none;
+        }
+    </style>
+
+    <script type='module' src='./polar-training-session-tool-vue/main.js'></script>
+</body>
+
+</html>
